@@ -1,0 +1,50 @@
+{
+    "debug" : true,
+    "unique": true,
+    "depth": 1,
+
+
+
+
+    "keywords": ["Gastronomie", "Hotellerie"],
+    "states" : ["Bavaria",
+    "Baden-Württemberg", 
+          "Berlin",
+          "Brandenburg",
+          "Bremen",
+          "Hamburg",
+          "Hesse",
+          "Mecklenburg-Vorpommern",
+          "Lower Saxony",
+          "North Rhine-Westphalia",
+          "Rhineland-Palatinate",
+          "Saarland",
+          "Saxony-Anhalt",
+          "Saxony",
+          "Schleswig-Holstein",
+          "Thuringia"],
+
+          
+          
+    "pathToDriver": "C:\\webdriver\\chromedriver",
+    "outputFileName": "kratzen.xlsx",
+          
+    "scheduler": {
+        "enabled": true,
+        "interval": 1
+    },
+            
+            
+    "searchSize": 1,
+
+    "searchHoga": true,
+    "searchCareer": true,
+    "searchStellen": true,
+    "searchArbeitsa": true,
+
+    "searchEveryMinute": false,
+    "searchEveryHour": true,
+    "searchEveryDay": false,
+    "searchEveryWeek": false
+
+}
