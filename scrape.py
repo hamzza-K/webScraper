@@ -1,14 +1,26 @@
 import sys, re, warnings, json, requests, base64, time, schedule, datetime, os
+
+import selenium
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.common.by import By
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.action_chains import ActionChains
+
 from bs4 import BeautifulSoup
 from bs4.element import Comment
 import urllib.request
 from art import text2art
 import pandas as pd
 from pymsgbox import *
+from prettytable import PrettyTable
 
 from kratzen import searchHoga, searchStellen, Suchen
+from career import CareerHotel
+
+x = PrettyTable()
 
 warnings.filterwarnings("ignore")
 
@@ -20,7 +32,7 @@ print(text2art('Kratzen'))
 
 def openSettings():
     try:
-        with open("settings.json", "r") as f:
+        with open("settings.json", encoding='utf-8-sig') as f:
             data = json.load(f)
 
         print('loading settings.json file..')
@@ -40,128 +52,23 @@ chrome_options.add_argument('--no-sandbox')
 chrome_options.add_argument('--disable-dev-shm-usage')
 chrome_options.add_argument('log-level=3')
 #------------------------------------------------------------------------
-driver = webdriver.Chrome(data['pathToDriver'],options=chrome_options)
+# driver = webdriver.Chrome(data['pathToDriver'],options=chrome_options)
 
+def getDriver():
+  return webdriver.Chrome(data['pathToDriver'],options=chrome_options)
 
-# ------------------------------ CAREER HOTEL --------------------------------
-class CareerHotel:
-  original_url = "https://www.hotelcareer.de"
-  hotel_url = "https://www.hotelcareer.de/jobs/ausbildung"
-
-
-  def __init__(self, debug):
-    self.debug = debug
-  
-  def suchify(self, url):
-    r = Suchen().create_session(url)
-
-    return BeautifulSoup(r.text, 'html.parser')
-
-  def getLinks(self, soup, debug: bool=False) -> list:
-    links = soup.find('body').find('ul', {'id': 'resultlist'}).find_all('li')
-
-    lisht = []
-
-    for link in links:
-      title = link.find('h2').text
-      reference = link.find('a').get('href')
-      location = link.find('span', {'class': 'mb-2'}).text
-      if not location:
-        location = 'None'
-      if debug:
-        print(f'title is : {title} and link: {reference} and location: {location}')
-      lisht.append((title, reference, location))
-    return lisht
-
-  def getEmail(self, soup):
-    soup.find('body').find('div', {'class', 'job_section'}).find('a').text
-
-
-  def parse_string(self, input_string) -> str:
-    if pattern.match(input_string) == None:
-        return (re.sub('\s+', '_', input_string.strip()), 0)
-    return (input_string.split(','), 1)
-
-  def getState(self, url) -> str:
-    r = Suchen().create_session(url)
-    soup = BeautifulSoup(r.text, 'html.parser')
-    table = soup.find('table', {'class': 'infobox ib-settlement vcard'})
-    try:
-      s = table.find('tbody')\
-      .find('tr', {'class': 'mergedrow'})\
-      .find('td').text
-    except AttributeError:
-      if self.debug:
-        print('didn\'t find the state..')
-      s = "None"
-    
-    return s
-
-  def handlerState(self, raw_str):
-    k = self.parse_string(raw_str)
-    if k[1] == 1:
-      for i in k[0]:
-        if self.debug:
-          print(f'trying {i}..')
-        url = wiki + '/' + i
-        r = self.getState(url)
-        if r != "None" or i == k[0][-1]:
-          if self.debug:
-            print(f'state of {i} is {r}')
-          return r
-          break
-      
-    else:
-      url = wiki + '/' + k[0]
-      return self.getState(url)
-    
-
-
-  def processScrape(self, url):
-
-
-    driver.get(url)
-    soup = BeautifulSoup(driver.page_source, 'html.parser')
-
-    links = self.getLinks(soup)
-    scraped = []
-
-    for link in links:
-      url = CareerHotel.original_url + link[1]
-
-      state = self.handlerState(link[2])
-
-      if state == "None":
-        state = link[2]      
-
-      soup = self.suchify(url)
-      if self.debug:
-        print(f'going to {url}...')
-      emailSection = soup.find('body').find('div', {'class', 'job_section'}).find('a')
-
-      if emailSection:
-        email = emailSection.text
-      else:
-        email = None
-
-      if email:
-        if self.debug:
-          print(f'email found: {email}')
-        scraped.append((link[0], email, state))
-      else:
-        if self.debug:
-          print(f'{url.split("/")[4]} didn\'t have an email..')
-      
-    return pd.DataFrame(scraped, columns=['Title', 'Email', 'State'])
-# ------------------------------ CAREER HOTEL --------------------------------
-
-
+def tearDown(driver):
+    driver.quit()
 
 
 def soupify(url):
+    driver = getDriver()
+
     driver.get(url)
     html = driver.page_source
     soup = BeautifulSoup(html, 'html.parser')
+
+    tearDown(driver)    
     return soup
 
 def isContentPresent(soup, debug=False) -> bool:
@@ -179,32 +86,37 @@ def isContentPresent(soup, debug=False) -> bool:
       print('post contains no job description. Moving forward..')
     return False
 
+
+def suchify(url):
+  return Suchen().create_session(url)
+
 def isContentLinkPresent(soup, debug=False) -> bool:
   try:
     link = soup.find('a', {'id': 'jobdetails-externeUrl'})
     if link == None:
       raise AssertionError
     if debug and link:
-      print('Job post contains external link..searching for email')
+      print('Job post contains external link...')
     return True
   except (AttributeError, AssertionError) as e:
     if debug:
-      print('post contains no external link..')
+      print('post contains no external link.')
     return False
 
-def isExternalLink(soup, debug=False) -> bool:
+def isExternalLink(soup, debug=True) -> bool:
   try:
+
     ext = soup.find('jb-job-detail-stellenbeschreibung').find('a')
 
     if ext == None:
       raise AssertionError
     assert ext.text == ' Externe Seite öffnen'
     if debug:
-      print('post contains external link..')
+      print('post shares external link...trying to reach it.')
     return True
   except AssertionError:
     if debug:
-      print('post contains no external link.')
+      print('post contains no shared external link.')
     return False
 
 def getContentLink(soup) -> str:
@@ -255,16 +167,18 @@ def get_jwt():
 
     return response.json()
 
-def search(jwt, what, where, searchSize=10):
+def search(jwt, what, where, page=1, days=7, umkreis=200, searchSize=10):
     """search for jobs. returns a list of job references"""
     params = (
-        ('angebotsart', '1'),
-        ('page', '1'),
+        ('angebotsart', '4'),
+        ('page', page),
         ('pav', 'false'),
         ('size', searchSize),
-        ('umkreis', '200'),
+        ('umkreis', umkreis),
+        ('veroeffentlichtseit', days),
         ('was', what),
         ('wo', where),
+        ('arbeitszeit', 'vz;tz;snw;ho;mj')
     )
 
     headers = {
@@ -301,84 +215,169 @@ def getStateAndTitle(details: dict) -> tuple:
     except KeyError:
         state = None
         title = None
-
     finally:
         return state, title
 
+def getNameAndEntryDate(details: dict) -> tuple:
+    """returns the name and entry date of the job"""
+    try:
+        name = details['arbeitgeber']
+        entry_date = details['eintrittsdatum']
+    except KeyError:
+        name = None
+        entry_date = None
+    finally:
+        return name, entry_date
+
 # ----------------------------------------------------------------------------------------------------------------------
-def searchArbeitsa(key, region, size, debug):
-  print('-----------------------------------------------------------------')
+def searchArbeitsa(key, region, page, days, size, umkreis, debug, pretty: bool = False):
+  print('-------------------------------------------------------------------------------------------')
   print('Searching for jobs in ' + region + ' with keyword ' + key)
-  print('-----------------------------------------------------------------')
-  result = search(jwt["access_token"], key, region, size)          
+  print('-------------------------------------------------------------------------------------------')
   
   scraped = []
+
   try:
-    for i in range(len(result['stellenangebote'][::-1])):
-      id = result['stellenangebote'][i]["refnr"]
-      url = "https://www.arbeitsagentur.de/jobsuche/jobdetail/" + id
-      print('going to url: ' + url)
-      jobDetails = job_details(jwt["access_token"], id)
-      print(f"Release date: {jobDetails['ersteVeroeffentlichungsdatum']}")
-      state, title = getStateAndTitle(jobDetails)        
-      if state != None and title != None:
-        print(f'state: {state} and title: {title}')
-        soup = soupify(url)
-        emails = []
-        foundEmail = False
-        #making the driver wait
-        driver.implicitly_wait(10)
-        if isContentPresent(soup, debug):
-          text = soup.find('jb-job-detail-stellenbeschreibung').find('p').get_text(strip=True, separator='\n').splitlines()
-          for i in text[::-1]:
-            e = extractEmails(i)
-            if e:
-              print(f'found email: {e}')
-              foundEmail = True
-              emails.append(e)
+    for i in range(page):
+      try:
+        jwt = get_jwt()
+        result = search(jwt["access_token"], key, region, i+1, days, umkreis, size)          
+        print('-------------------------------------------------------------------------------------------')
+        print('Searching page ' + str(i+1) + ' for jobs which were posted in the last ' + str(days) + ' days' + ' and are within ' + str(umkreis) + ' km of ' + region)
+        print("Total number of jobs: " + str(len(result['stellenangebote'][::-1])))
+        print('-------------------------------------------------------------------------------------------')
 
-        elif isContentPresent(soup) and isContentLinkPresent(soup, debug) and not foundEmail:
-          link = getContentLink(soup)
-          print(f'going to {link}...')
-          html = getHtml(link)
-          if html:
-            t = text_from_html(html)
-            e = extractEmails(t)
-            if e:
-              print(f'found email! {e}')
-              emails.append(e)
-              foundEmail = True
-            else:
-              print('found no email.')
-          else:
-            print('Couldn\'t open link: ' + link)
-        elif isExternalLink(soup, debug) and not foundEmail:
-          link = getExternalLink(soup)
-          print(f'going to {link}...')
-          html = getHtml(link)
-          if html:
-            t = text_from_html(html)
-            e = extractEmails(t)
-            if e:
-              print(f'found email! {e}')
+        d = getDriver()
+        patience = 3
+        idx = 0
+        if True:
+          for i in range(len(result['stellenangebote'][::-1])):
+            idx += 1
+            try:
+              print(f'{i + 1}' + ')')
+              id = result['stellenangebote'][i]["refnr"]
+              url = "https://www.arbeitsagentur.de/jobsuche/jobdetail/" + id
+              print('going to url: ' + url)
+              jobDetails = job_details(jwt["access_token"], id)
+              print(f"Release date: {jobDetails['ersteVeroeffentlichungsdatum']}")
+              # time.sleep(1)
+              state, title = getStateAndTitle(jobDetails)
+              name, entry_date = getNameAndEntryDate(jobDetails)       
+              if state != None and title != None:
+                print(f'state: {state} and title: {title}')
+                # soup = soupify(url)
+                # soup = suchify(url)
+                d.get(url)
+                html = d.page_source
+                soup = BeautifulSoup(html, 'html.parser')
+                emails = []
+                foundEmail = False
+                #making the driver wait
+                # driver.implicitly_wait(10)
+                if isContentPresent(soup, debug):
+                  text = soup.find('jb-job-detail-stellenbeschreibung').find('p').get_text(strip=True, separator='\n').splitlines()
+                  for i in text[::-1]:
+                    e = extractEmails(i)
+                    if e:
+                      print(f'found email inside the post: {e}')
+                      print('-----------------------------------------------------------------')
+                      foundEmail = True
+                      emails.append(e)
+                  if not foundEmail:
+                    print('no email found inside the post...')
 
-              emails.append(e)
-            else:
-              print('found no email.')
-          else:
-            print('Couldn\'t open link: ' + link)
-        if emails:
-          scraped.append([title, emails[0][0], state])
-        else:  
-          print(f'There were no emails found for id {id}. Skipping this job.')  
-      else:
-        print('Link is not valid')
-  except KeyError:
-    print(f'state {region} not recognized.')
+                if not foundEmail and isContentLinkPresent(soup, debug):
+                  link = getContentLink(soup)
+                  print(f'going to {link}...')
+                  html = getHtml(link)
+                  if html:
+                    t = text_from_html(html)
+                    e = extractEmails(t)
+                    if e:
+                      print(f'found email in the shared link! {e}')
+                      print('-----------------------------------------------------------------')
+                      emails.append(e)
+                      foundEmail = True
+                    else:
+                      print('found no email in the shared link.')
+                  else:
+                    print('Couldn\'t open link: ' + link)
+                if not foundEmail  and isExternalLink(soup, debug):
+                  link = getExternalLink(soup)
+                  print(f'going to {link}...')
+                  html = getHtml(link)
+                  if html:
+                    t = text_from_html(html)
+                    e = extractEmails(t)
+                    if e:
+                      print(f'found email in the external link! {e}')
+                      print('-----------------------------------------------------------------')
 
+                      emails.append(e)
+                    else:
+                      print('found no email in the external link.')
+                  else:
+                    print('Couldn\'t open link: ' + link)
+                if emails:
+                  print(f'name: {name} and entry date: {entry_date} and state: {state} and title: {title} and emails: {emails}')
+                  print('-----------------------------------------------------------------')
+                  if pretty:
+                    x.align = 'r'
+                    x.field_names = ['Title', 'Name', 'Email', 'Entry Date', 'State']
+                    x.add_row([title, name, emails, entry_date, state])
+                    if idx > 5:
+                      print(x.get_string(start=idx-5, end=idx))
+                    else:
+                      print(x)
+                  scraped.append([title, name, emails[0][0], entry_date, state])
+                else:  
+                  print(f'There were no emails found for id {id}. Skipping this job.')  
+              else:
+                print('Link is not valid')
+            except KeyError:
+              print(f'state {region} not recognized for this offer. Moving to the next one.')
+              patience -= 1
+              if patience == 0:
+                print('-----------------------------------------------------------------')
+                print(f'Run out of patience. State {region} not found. Exiting...')
+                print('-----------------------------------------------------------------')
+                break
+              continue
+      except Exception as e:
+        print(e)
+        print('-----------------------------------------------------------------')
+        print(f'Couldn\'t get the jwt token for page.')
+        print('-----------------------------------------------------------------')
+        continue
+
+  except Exception as e:
+      print(e)
+      print('-----------------------------------------------------------------')
+      print(f'Couldn\'t get the jwt token for page. Exiting...')
+      print('-----------------------------------------------------------------')
     
-  return pd.DataFrame(scraped, columns=['Title', 'Email', 'State']) if scraped else None
+  return pd.DataFrame(scraped, columns=['Title', 'Name', 'Email', 'Entry Date', 'State']) if scraped else None
   # return scraped
+
+
+def bypass(url):
+  driver = getDriver()
+  driver.get(url)
+  
+  WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, 'cmpbntyestxt'))).click()
+  
+  while 1:
+    try:
+      WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CLASS_NAME, 'hp_search-list-load-more'))).click() 
+    except Exception as e:
+      print(e)
+      print("reached at the end.")
+      break
+    
+  source = driver.page_source
+  tearDown(driver)
+    
+  return source
 # ----------------------------------------------------------------------------------------------------------------------
 
 
@@ -390,45 +389,133 @@ if __name__ == '__main__':
     regions = data['states'] # list of states
     debug = data['debug'] # if true, the scraper will print out logs
     depth = data['depth'] # how many pages to scrape
-    size = data['searchSize'] # number of jobs to search for each keyword
     t = data['scheduler']['interval'] # how often to scrape
-
-
+    days = data['arbeitsa']['days'] # how many days since the job was offered
+    Ergebnissseite = data['arbeitsa']['page'] # which page to scrape
+    size = data['arbeitsa']['searchSize'] # number of jobs to search for each keyword
+    umkreis = data['arbeitsa']['umkreis'] # radius of the search in km
+    hoga = data['hoga'] 
+    
     jwt = get_jwt()
     start_time = time.time()
 
 
     def job():
-      df = pd.DataFrame(columns=['Title', 'Email', 'State'])
+      df = pd.DataFrame(columns=['Title', 'Name', 'Email', 'Entry Date', 'State'])
+
+
+      if data["searchCareer"]:
+        print('-----------------------------------------------------------------')
+        print("--- Searching CareerHotel site ---")
+        print('-----------------------------------------------------------------')
+        for keyword in keywords:
+          for state in regions:
+            # print("=============================================================")
+            print(f"----- On {state} with {keyword} -----")
+            # print("=============================================================")
+            career = CareerHotel(state=state, keyword=keyword, driver=getDriver(), debug=True)
+            try:
+              page = career.drives()
+              soup = career.soupify(page)
+              links = career.getAllLinks(soup, page)
+              scraped = career.processScrape(links)
+              if scraped is not None:
+                df = pd.concat([df, scraped])
+            except Exception as e:
+              print('-----------------------------------------------------------------')
+              print("--- Couldn't open the CareerHotel site ---")
+              print('-----------------------------------------------------------------')
+              print(e)
+              print('Try in another run.')
+              pass
 
       if data["searchHoga"]:
         print('-----------------------------------------------------------------')
         print("--- Searching HogaPage site ---")
         print('-----------------------------------------------------------------')
+        try:
+          df1 = searchHoga(keywords, regions, hoga, debug, bypass)
+          if df1 is not None:
+            df = pd.concat([df, df1])
+        except (Exception, selenium.common.exceptions.ElementNotInteractableException):
+          print('-----------------------------------------------------------------')
+          print("--- Couldn't open the HogaPage site ---")
+          print('-----------------------------------------------------------------')
+          print('Trying again...')
+          df1 = searchHoga(keywords, regions, hoga, debug, bypass)
+          if df1 is not None:
+            df = pd.concat([df, df1])
 
-        df1 = searchHoga(keywords, regions, debug)
-        df = pd.concat([df, df1])
+        except Exception:
+          print('-----------------------------------------------------------------')
+          print("--- Couldn't open the HogaPage site ---")
+          print('-----------------------------------------------------------------')
+          print('Trying again in 30 seconds...')
+          time.sleep(30)
+          df1 = searchHoga(keywords, regions, hoga, debug, bypass)
+          if df1 is not None:
+            df = pd.concat([df, df1])
+        
+        except Exception:
+          print('-----------------------------------------------------------------')
+          print("--- Couldn't open the HogaPage site ---")
+          print('-----------------------------------------------------------------')
+          print('Try in another run.')
+          pass 
+
+      if data['searchArbeitsa']:
+        print('-----------------------------------------------------------------')
+        print("--- Searching Arbeitsa site ---")
+        print('-----------------------------------------------------------------')
+        for key in keywords:
+          for region in regions:
+            try:
+              df4 = searchArbeitsa(key, region, Ergebnissseite, days, size, umkreis, debug)
+              if df4 is not None:
+                df = pd.concat([df, df4])
+            except Exception as e:
+              print('-----------------------------------------------------------------')
+              print("--- Couldn't open the Arbeitsa site ---")
+              print('-----------------------------------------------------------------')
+              print(e)
+              print('Trying again in 30 seconds...')
+              time.sleep(30)
+              df4 = searchArbeitsa(key, region, Ergebnissseite, days, size, umkreis, debug)
+              if df4 is not None:
+                df = pd.concat([df, df4])
+
+            except Exception:
+              print('-----------------------------------------------------------------')
+              print("--- Couldn't open the Arbeitsa site ---")
+              print('-----------------------------------------------------------------')
+              print('Try in another run.')
+              pass
+
       if data["searchStellen"]:
+              
         print('-----------------------------------------------------------------')
         print("--- Searching Stellen site ---")
         print('-----------------------------------------------------------------')
+        for region in regions:
+          try:
+            df2 = searchStellen(depth, region, debug)
+          
+            if df2 is not None:
+              df = pd.concat([df, df2])
+          except Exception:
+            print('-----------------------------------------------------------------')
+            print("--- Couldn't open the Stellen site ---")
+            print('-----------------------------------------------------------------')
+            print('Try in another run.')
 
-        df2 = searchStellen(depth, debug)
-        df = pd.concat([df, df2])
-      if data["searchCareer"]:
-        print('-----------------------------------------------------------------')
-        print("--- Searching CareerHotel site ---")
-        print('-----------------------------------------------------------------')
 
-        scraper = CareerHotel(debug)
-        df3 = scraper.processScrape(scraper.hotel_url)
-        df = pd.concat([df, df3])
-      if data['searchArbeitsa']:
-        for key in keywords:
-          for region in regions:
-            df4 = searchArbeitsa(key, region, size, debug)
-            if df4 is not None:
-              df = pd.concat([df, df4])
+    # scraped = scraped.drop_duplicates(subset='Email', keep='first')
+    # print((df))
+    #     scraper = CareerHotel(debug)
+    #     df3 = scraper.processScrape(scraper.hotel_url)
+    #     df = pd.concat([df, df3])
+
+
 
 
 
@@ -439,6 +526,7 @@ if __name__ == '__main__':
       df = df.sort_values('State', ascending=False)
       if data['unique']:
         df = df.drop_duplicates(subset='Email', keep='first')
+
       df = df.dropna().reset_index()
   # =============================================================================
 
@@ -457,19 +545,26 @@ if __name__ == '__main__':
         df.to_excel(time_now + data["fileName"], index=False)
       else:
         df.to_excel(f'{time_now}output.xlsx', index=False)
+
+      print('-----------------------------------------------------------------')
+      print("--- %s seconds ---" % (time.time() - start_time))
+      print('-----------------------------------------------------------------')
       
 
     if data['searchEveryHour']:
       print(f'Scheduling job to run every {t} hour.')
+      job()
       schedule.every(t).hours.do(job)
     elif data['searchEveryMinute']:
       print(f'scheduling job to run every {t} minute.')
       schedule.every(t).minutes.do(job)
     elif data['searchEveryDay']:
       print(f'scheduling job to run every {t} day.')
+      job()
       schedule.every(t).day.do(job)
     elif data['searchEveryWeek']:
       print(f'scheduling job to run every {t} week.')
+      job()
       schedule.every(t).week.do(job)
     else:
       job()
@@ -483,9 +578,7 @@ if __name__ == '__main__':
     else:
       print('scheduler disabled')
       job()
-    print('-----------------------------------------------------------------')
-    print("--- %s seconds ---" % (time.time() - start_time))
-    print('-----------------------------------------------------------------')
+
     print("Done! Press any key to exit.")
     input()
     sys.exit()

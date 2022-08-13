@@ -1,4 +1,5 @@
 import requests, time
+from prettytable import PrettyTable
 from bs4 import BeautifulSoup
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
@@ -7,6 +8,8 @@ from requests_html import HTMLSession
 import re
 import pandas as pd
 
+
+x = PrettyTable()
 
 
 wiki = "https://en.wikipedia.org/wiki"
@@ -49,18 +52,18 @@ class Suchen:
     session.mount('https://', adapter)
 
     return session.get(url)
+# ----------------------------------------------------------------------------------------------------------------------
 
-
+# ----------------------------------------------------------------------------------------------------------------------
 class Hoga:
 
-  def __init__(self, url: str, origin: str, debug: bool=False):
-    self.url = url
+  def __init__(self, origin: str, source, debug: bool=False):
+    self.source = source
     self.origin = origin
     self.debug = debug
 
   def _findArticles(self) -> list:
-    r = Suchen().create_session(self.url)
-    soup = BeautifulSoup(r.text, 'html.parser')
+    soup = BeautifulSoup(self.source, 'html.parser')
     articles = soup.find_all('article')
 
     links = []
@@ -81,46 +84,67 @@ class Hoga:
 
     if self.debug:
       print(links)
+      print('returning total of ' + str(len(links)) + ' links')
     return links
 
 
-  def findEmail(self, state=None) -> list:
+  def findEmail(self, hoga, state=None) -> list:
     emails = []
     links = self._findArticles()
 
+    searchAll = hoga['searchAll']
+    limit = hoga['limit']
+
+    if not searchAll:
+      links = links[:limit] if limit < len(links) else links
+      print('searching only ' + str(limit) + ' links')
+
+    idx = 0
     for link in links:
+      idx += 1
       l = self.origin + link[1]
       newlink = Suchen().create_session(l)
 
       if self.debug:
+        print(str(idx) + ')')
         print(f'going to {l}')
       soup = BeautifulSoup(newlink.text, 'html.parser')
       meta = soup.find('div', {'class':'hp_job-detail-meta'})
-      email = meta.find('a').get('content')
+      a = meta.find_all('a')
+      name = soup.find('div', {'class':'hp_job-detail-meta'}).\
+      find('div', {'class':'position-relative mb-hp_smaller'}).\
+      get_text(strip=True, separator='\n').splitlines()
+      entry_date = soup.find('div', {'class':'hp_job-detail-header'}).\
+      find('li', {'class':'icon-clock m-0'}).text
+      for i in range(len(a)):
+        if a[i].get('content'):
+          email = a[i].get('content')
+          if self.debug:
+            print(f'email found!')
+          break
 
-      if email is None:
-        if self.debug:
-          print('did not find email..Searching further')
-        a = meta.find_all('a')
-
-        for i in range(len(a)):
-          if a[i].get('content'):
-            email = a[i].get('content')
-            if self.debug:
-              print(f'email found!')
-            break
-
-      if self.debug:
-        print(f'found {email}')
 
       if state:
-        emails.append((link[0], email, state))
+        x.align = 'r'
+        x.field_names = ['name', 'email', 'entry_date', 'state']  
+        try:           
+          x.add_row([name[1], email, entry_date, state])
+          print(f'{name[1]} - {email} - {entry_date}')
+          emails.append((link[0], name[1], email, entry_date, state))
+          if idx > 5:
+            print(x.get_string(start=idx - 5, end=idx))
+          else:
+            print(x)
+        except IndexError:
+          print(f'{name} - {email} - {entry_date}')
+          emails.append((link[0], name[1], email, entry_date, state))
       else:
-        emails.append((link[0], email))
+        emails.append((link[0], name[1], email, entry_date, 'None'))
 
     return emails
+# ----------------------------------------------------------------------------------------------------------------------
 
-
+# ----------------------------------------------------------------------------------------------------------------------
 class Stellen:
   
   def __init__(self, url: str, origin: str, debug: bool=False):
@@ -143,8 +167,8 @@ class Stellen:
       cols = [ele.text.strip() for ele in cols]
       data.append([ele for ele in cols if ele] + [href]) 
 
-    if self.debug:
-      print(data)
+    # if self.debug:
+    #   print(data)
 
     return data
 
@@ -192,8 +216,10 @@ class Stellen:
     emails = []
     links = self._findTables()
 
-    for title in links:
+    idx = 0
 
+    for title in links:
+      idx += 1
       l = self.origin + title[-1]
       state = self.handlerState(title[1])
       if state == "None":
@@ -205,52 +231,77 @@ class Stellen:
       soup = BeautifulSoup(newlink.text, 'html.parser')
       try:
         email = soup.find('p', {'class': 'email'}).text[8:]
+        name = soup.find('div', {'class': 'contentBox clearfix contactBox'}).find_all('p')[-3].text
+        beginn = soup.find('table', {'class': 'jobDetailList'}).find_all('td')
 
+        blisht = []
+        for b in beginn:
+          blisht.append("".join(b.get_text(strip=True, separator='\n').splitlines()))
+
+        indx = blisht.index('Beginn')
         if self.debug:
-          print(f'found state for {title[1]}: {state}')
-          print(f'found email for {title[0]} : {email}.')
+          x.align = 'r'
+          x.field_names = ['title', 'name', 'email', 'entry_date', 'state']
+          x.add_row([title[0], name, email, blisht[indx+1], state])
+          if idx >= 5:
+            print(x.get_string(start=idx-5, end=idx))
+          else:
+            print(x)
+          # print(f'{state} - {name} - {email} - {blisht[indx+1]}')
 
         emails.append((title[0], email, state))
 
-      except AttributeError:
+      except AttributeError as e:
+        print(e)
         if self.debug:
           print(f'{title[0]} has no email. Skipping...')
         email = None
 
     return emails
-
+# ----------------------------------------------------------------------------------------------------------------------
   
 
+
+
+
+
 # ----------------------------------------------------------------------------------------------------------------------
-def searchHoga(keywords, states, debug):
+def searchHoga(keywords, states, hoga, debug, fn):
   h_emails = []
+  k = []
   for key in keywords:
     print(f'Searching for keyword: {key}..')
     for state in states:
       print(f'searching for the state: {state}..')
-      hoga_url = f"https://www.hogapage.de/jobs/suche?q={key}&where={state}&radius=200"
-      h = Hoga(hoga_url, origin_hoga, debug)
-      h_emails.append(h.findEmail(state=state))
-      
-      mail = [i for i in h_emails]
-      k = []
-      for i in mail:
-        for m in i:
-          k.append(m)
+      # hoga_url = f"https://www.hogapage.de/jobs/suche?q={key}&where={state}&radius=200"
+      revised_hoga = f"https://www.hogapage.de/jobs/suche?q=Auszubildende+m%2Fw%2Fd+{key}%2F-frau&where={state}&radius=200"
+      try:
+        source = fn(revised_hoga)
+        h = Hoga(origin_hoga, source, debug)
+        h_emails.append(h.findEmail(hoga, state=state))
+        
+        mail = [i for i in h_emails]
+        for i in mail:
+          for m in i:
+            k.append(m)
+      except Exception as e:
+        print(e)
+        print(f'{key} - {state} - no results')
+        continue
 
-  return pd.DataFrame(k, columns=['Title', 'Email', 'State'])
+  return pd.DataFrame(k, columns=['Title', 'Name', 'Email', 'Entry Date', 'State'])
 # ----------------------------------------------------------------------------------------------------------------------
 
 # ----------------------------------------------------------------------------------------------------------------------
-def searchStellen(depth, debug):
+def searchStellen(depth, state, debug):
   k = []
   for i in range(depth):
-    stellen_url = f"https://www.ihk-lehrstellenboerse.de/angebote/suche?hitsPerPage=10&page={i}&sortColumn=-1&sortDir=asc&query=9&organisationName=Unternehmen+eingeben&status=1&mode=1&dateTypeSelection=LASTCHANGED_DATE&thisYear=true&nextYear=true&afterNextYear=true&distance=0"
+    stellen_url = f"https://www.ihk-lehrstellenboerse.de/angebote/suche?hitsPerPage=10&page={i}&sortColumn=-1&sortDir=asc&query=9&organisationName=Unternehmen+eingeben&status=1&mode=1&dateTypeSelection=LASTCHANGED_DATE&location={state}&thisYear=true&nextYear=true&afterNextYear=true&distance=0"
     s = Stellen(stellen_url, origin_stellen, debug)
     k.append(s.findEmail())
     
     lisht = [i for m in k for i in m]
     lisht.sort(key = lambda lisht: lisht[-1])
 
-  return pd.DataFrame(lisht, columns=['Title', 'Email', 'State'])
+  return pd.DataFrame(lisht, columns=['Title', 'Name', 'Email', 'Entry Date', 'State'])
 # ----------------------------------------------------------------------------------------------------------------------

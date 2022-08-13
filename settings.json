@@ -1,46 +1,36 @@
 {
-    "debug" : true,
+    "debug" : false,
     "unique": true,
-    "depth": 1,
+    "depth": 5,
 
-
-
-
-    "keywords": ["Gastronomie", "Hotellerie"],
-    "states" : ["Bavaria",
-    "Baden-Württemberg", 
-          "Berlin",
-          "Brandenburg",
-          "Bremen",
-          "Hamburg",
-          "Hesse",
-          "Mecklenburg-Vorpommern",
-          "Lower Saxony",
-          "North Rhine-Westphalia",
-          "Rhineland-Palatinate",
-          "Saarland",
-          "Saxony-Anhalt",
-          "Saxony",
-          "Schleswig-Holstein",
-          "Thuringia"],
-
-          
+    "keywords": ["Hotelfachmann/frau", "Restaurantfachmann/frau"],
+    "states" : [ "Baden-Württemberg", "North Rhine-Westphalia", "Hessen", "Niedersachsen", "Reinland-Pfalz"],
           
     "pathToDriver": "C:\\webdriver\\chromedriver",
-    "outputFileName": "kratzen.xlsx",
+    "fileName": "kratzen.xlsx", 
+    "outputPath": "C:\\Users\\hk151\\docs",
           
     "scheduler": {
         "enabled": true,
-        "interval": 1
+        "interval": 3
     },
-            
-            
-    "searchSize": 1,
 
-    "searchHoga": true,
-    "searchCareer": true,
-    "searchStellen": true,
+    "arbeitsa": {
+        "searchSize": 10,
+        "umkreis": 100,
+        "page": 2,
+        "days": 7
+    },
+
+    "hoga": {
+        "limit": 100,
+        "searchAll": false
+    },
+
     "searchArbeitsa": true,
+    "searchCareer": true,
+    "searchHoga": true,
+    "searchStellen": false,
 
     "searchEveryMinute": false,
     "searchEveryHour": true,
@@ -48,3 +38,4 @@
     "searchEveryWeek": false
 
 }
+
