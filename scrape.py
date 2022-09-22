@@ -299,7 +299,7 @@ def searchArbeitsa(key, region, page, days, size, umkreis, debug, pretty: bool =
                     else:
                       print('found no email in the shared link.')
                   else:
-                    print('Couldn\'t open link: ' + link)
+                    print('Couldn\'t open the link: ' + link)
                 if not foundEmail  and isExternalLink(soup, debug):
                   link = getExternalLink(soup)
                   print(f'going to {link}...')
