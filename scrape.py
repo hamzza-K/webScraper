@@ -61,11 +61,9 @@ def tearDown(driver):
 
 def soupify(url):
     driver = getDriver()
-
     driver.get(url)
     html = driver.page_source
     soup = BeautifulSoup(html, 'html.parser')
-
     tearDown(driver)    
     return soup
 
