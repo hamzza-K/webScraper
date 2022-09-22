@@ -82,7 +82,6 @@ def isContentPresent(soup, debug=False) -> bool:
       print('post contains no job description. Moving forward..')
     return False
 
-
 def suchify(url):
   return Suchen().create_session(url)
 
@@ -101,7 +100,6 @@ def isContentLinkPresent(soup, debug=False) -> bool:
 
 def isExternalLink(soup, debug=True) -> bool:
   try:
-
     ext = soup.find('jb-job-detail-stellenbeschreibung').find('a')
 
     if ext == None:
@@ -258,7 +256,8 @@ def searchArbeitsa(key, region, page, days, size, umkreis, debug, pretty: bool =
               print(f"Release date: {jobDetails['ersteVeroeffentlichungsdatum']}")
               # time.sleep(1)
               state, title = getStateAndTitle(jobDetails)
-              name, entry_date = getNameAndEntryDate(jobDetails)       
+              name, entry_date = getNameAndEntryDate(jobDetails)    
+              #<---------- change here --------------->   
               if state != None and title != None:
                 print(f'state: {state} and title: {title}')
                 # soup = soupify(url)
@@ -329,7 +328,7 @@ def searchArbeitsa(key, region, page, days, size, umkreis, debug, pretty: bool =
                 else:  
                   print(f'There were no emails found for id {id}. Skipping this job.')  
               else:
-                print('Link is not valid')
+                print('Link is not valid. Couldn\'t get State and Title.')
             except KeyError:
               print(f'state {region} not recognized for this offer. Moving to the next one.')
               patience -= 1
@@ -547,20 +546,7 @@ if __name__ == '__main__':
                   page.quit()
 
 
-    # scraped = scraped.drop_duplicates(subset='Email', keep='first')
-    # print((df))
-    #     scraper = CareerHotel(debug)
-    #     df3 = scraper.processScrape(scraper.hotel_url)
-    #     df = pd.concat([df, df3])
 
-
-
-
-
-
-
-  # =============================================================================
-      # df = pd.concat([df1, df2, df3])
       df = df.sort_values('State', ascending=False)
       if data['unique']:
         df = df.drop_duplicates(subset='Email', keep='first')

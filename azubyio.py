@@ -130,7 +130,7 @@ def extractEmails(input_string) -> str:
   return re.findall(r'[\w.+-]+@[\w-]+\.[\w.-]+', input_string)
 
 
-html = urllib.request.urlopen(postwithemail).read()
+# html = urllib.request.urlopen(postwithemail).read()
 
 #====================================================================================
 # ------------------------------------ Azubiyo --------------------------------------
@@ -327,26 +327,26 @@ class Azubiyo:
 #====================================================================================
 
 
-if __name__ == "__main__":
+# if __name__ == "__main__":
 
 
-  keywords = data['keywords']
-  cities = data['azubiyo']['cities']
-  azyubio_area = data['azubiyo']['searchSize']
-  for key in keywords:
-    for city in cities:
-      print(f'searching for keyword: {key} and city: {city} in the area: {azyubio_area}km')
-      azu = Azubiyo(city, key, override=False, debug=True)
-      page = azu.drives(azyubio_area)
-      if page:
-        links = azu.getAllLinks(page)
-        print('posted jobs: ', azu.numJobs, type(azu.numJobs))
-        print('returning total links:', len(links))
-        if int(azu.numJobs) < len(links):
-          links = links[:int(azu.numJobs)]
-        print(f'searching for total {len(links)} links.')
-        for link in links:
-          print('Finding email for %s' % link[0])
-          print(azu.processEmails(link))
-        page.quit()
+#   keywords = data['keywords']
+#   cities = data['azubiyo']['cities']
+#   azyubio_area = data['azubiyo']['searchSize']
+#   for key in keywords:
+#     for city in cities:
+#       print(f'searching for keyword: {key} and city: {city} in the area: {azyubio_area}km')
+#       azu = Azubiyo(city, key, override=False, debug=True)
+#       page = azu.drives(azyubio_area)
+#       if page:
+#         links = azu.getAllLinks(page)
+#         print('posted jobs: ', azu.numJobs, type(azu.numJobs))
+#         print('returning total links:', len(links))
+#         if int(azu.numJobs) < len(links):
+#           links = links[:int(azu.numJobs)]
+#         print(f'searching for total {len(links)} links.')
+#         for link in links:
+#           print('Finding email for %s' % link[0])
+#           print(azu.processEmails(link))
+#         page.quit()
 
