@@ -1,35 +1,53 @@
 {
     "debug" : false,
     "unique": true,
-    "depth": 5,
-
-    "keywords": ["Hotelfachmann/frau", "Restaurantfachmann/frau"],
-    "states" : [ "Baden-Württemberg", "North Rhine-Westphalia", "Hessen", "Niedersachsen", "Reinland-Pfalz"],
-          
+    "depth": 10,
+    
+    "keywords": ["Hotelfachmann/frau"],
+    "states" : ["Aufhofen (Oberbayern)"],
+    
     "pathToDriver": "C:\\webdriver\\chromedriver",
     "fileName": "kratzen.xlsx", 
     "outputPath": "C:\\Users\\hk151\\docs",
-          
+
+
+    "chrome": {
+        "hide": false
+    },
+
+
     "scheduler": {
         "enabled": true,
         "interval": 3
     },
 
     "arbeitsa": {
-        "searchSize": 10,
-        "umkreis": 100,
-        "page": 2,
-        "days": 7
-    },
+        "searchSize": 100,
+        "umkreis": 200,
+        "page": 4,
+        "days": 5
+    }, 
 
     "hoga": {
-        "limit": 100,
-        "searchAll": false
+        "limit": 50,
+        "searchAll": true
     },
 
-    "searchArbeitsa": true,
+    "azubiyo": {
+        "searchSize": 4,
+        "override": false,
+        "cities": ["Köln"]
+    },
+
+    "hotelcareer": {
+        "searchSize": 4,
+        "override": false
+    },
+
+    "searchArbeitsa": false,
     "searchCareer": true,
-    "searchHoga": true,
+    "searchHoga": false,
+    "searchAzubiyo": false,
     "searchStellen": false,
 
     "searchEveryMinute": false,

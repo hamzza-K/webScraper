@@ -2,12 +2,9 @@ import sys, re, warnings, json, requests, base64, time, schedule, datetime, os
 
 import selenium
 from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.action_chains import ActionChains
 
 from bs4 import BeautifulSoup
 from bs4.element import Comment
@@ -19,15 +16,13 @@ from prettytable import PrettyTable
 
 from kratzen import searchHoga, searchStellen, Suchen
 from career import CareerHotel
+from azubyio import Azubiyo
 
 x = PrettyTable()
 
 warnings.filterwarnings("ignore")
-
 wiki = "https://en.wikipedia.org/wiki"
-
 pattern = re.compile(r"^(\w+)(,\s*\w+)*$")
-
 print(text2art('Kratzen'))
 
 def openSettings():
@@ -46,16 +41,19 @@ data = openSettings() #|||||||||||||||||||||||||
 #===============================================
 #-----------------------------------------------------------------------
 # Configure the driver
-chrome_options = webdriver.ChromeOptions()
-chrome_options.add_argument('--headless')
-chrome_options.add_argument('--no-sandbox')
-chrome_options.add_argument('--disable-dev-shm-usage')
-chrome_options.add_argument('log-level=3')
+def getDriver(hide: bool = True):
+  chrome_options = webdriver.ChromeOptions()
+  if hide:
+    chrome_options.add_argument('--headless')
+  chrome_options.add_argument('--no-sandbox')
+  chrome_options.add_argument('--disable-dev-shm-usage')
+  chrome_options.add_argument('log-level=3')
+  return webdriver.Chrome(data['pathToDriver'],options=chrome_options)
 #------------------------------------------------------------------------
 # driver = webdriver.Chrome(data['pathToDriver'],options=chrome_options)
 
-def getDriver():
-  return webdriver.Chrome(data['pathToDriver'],options=chrome_options)
+# def getDriver():
+#   return webdriver.Chrome(data['pathToDriver'],options=chrome_options)
 
 def tearDown(driver):
     driver.quit()
@@ -319,7 +317,7 @@ def searchArbeitsa(key, region, page, days, size, umkreis, debug, pretty: bool =
                   else:
                     print('Couldn\'t open link: ' + link)
                 if emails:
-                  print(f'name: {name} and entry date: {entry_date} and state: {state} and title: {title} and emails: {emails}')
+                  print(f'name: {name} and entry date: {entry_date} and state: {state} and title: {"Arbeitsa | " + title} and emails: {emails}')
                   print('-----------------------------------------------------------------')
                   if pretty:
                     x.align = 'r'
@@ -329,7 +327,7 @@ def searchArbeitsa(key, region, page, days, size, umkreis, debug, pretty: bool =
                       print(x.get_string(start=idx-5, end=idx))
                     else:
                       print(x)
-                  scraped.append([title, name, emails[0][0], entry_date, state])
+                  scraped.append(['Arbeitsa | ' + title, name, emails[0][0], entry_date, state])
                 else:  
                   print(f'There were no emails found for id {id}. Skipping this job.')  
               else:
@@ -395,6 +393,14 @@ if __name__ == '__main__':
     size = data['arbeitsa']['searchSize'] # number of jobs to search for each keyword
     umkreis = data['arbeitsa']['umkreis'] # radius of the search in km
     hoga = data['hoga'] 
+    hide = data['chrome']['hide']
+    hotecareer_searchsize = data['hotelcareer']['searchSize']
+    
+    hotecareer_searchdict = {'0': 'exact',
+                             '1': '20',
+                             '2': '50',
+                             '3': '100',
+                             '4': '150'}
     
     jwt = get_jwt()
     start_time = time.time()
@@ -411,11 +417,12 @@ if __name__ == '__main__':
         for keyword in keywords:
           for state in regions:
             # print("=============================================================")
-            print(f"----- On {state} with {keyword} -----")
+            # print(f"----- On {state} with {keyword} -----")
+            print(f'searching for keyword: {keyword} and state: {state} in the area: {hotecareer_searchdict[str(hotecareer_searchsize)]}km')
             # print("=============================================================")
-            career = CareerHotel(state=state, keyword=keyword, driver=getDriver(), debug=True)
+            career = CareerHotel(state=state, keyword=keyword, driver=getDriver(hide=hide), debug=True)
             try:
-              page = career.drives()
+              page = career.drives(hotecareer_searchsize)
               soup = career.soupify(page)
               links = career.getAllLinks(soup, page)
               scraped = career.processScrape(links)
@@ -507,6 +514,39 @@ if __name__ == '__main__':
             print("--- Couldn't open the Stellen site ---")
             print('-----------------------------------------------------------------')
             print('Try in another run.')
+      
+      if data['searchAzubiyo']:
+        print('-----------------------------------------------------------------')
+        print("--- Searching Azubiyo site ---")
+        print('-----------------------------------------------------------------')
+        cities = data['azubiyo']['cities']
+        override = data['azubiyo']['override']
+        azyubio_area = data['azubiyo']['searchSize']
+
+        searchdict = {'0': '10',
+                      '1': '25',
+                      '2': '50',
+                      '3': '100',
+                      '4': '250'}
+        
+        for key in keywords:
+          for city in cities:
+            print(f'searching for keyword: {key} and city: {city} in the area: {searchdict[str(azyubio_area)]}km')
+            azu = Azubiyo(city, key, override=override, debug=True)
+            page = azu.drives(azyubio_area)
+            if page:
+              links = azu.getAllLinks(page)
+              print('posted jobs: ', azu.numJobs)
+              print('returning total links:', len(links))
+              if int(azu.numJobs) < len(links):
+                links = links[:int(azu.numJobs)]
+              print(f'searching for total {len(links)} links.')
+              for link in links:
+                print('Finding email for %s' % link[0])
+                scraped = azu.processEmails(link)
+                if scraped is not None:
+                  df = pd.concat([df, scraped])
+                  page.quit()
 
 
     # scraped = scraped.drop_duplicates(subset='Email', keep='first')

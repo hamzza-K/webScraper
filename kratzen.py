@@ -18,24 +18,6 @@ origin_stellen = "https://www.ihk-lehrstellenboerse.de/"
 
 pattern = re.compile(r"^(\w+)(,\s*\w+)*$")
 
-# def openSettings():
-#     try:
-#         with open("settings.json", "r") as f:
-#             data = json.load(f)
-
-#         print('loading settings.json file..')
-#         return data
-#     except FileNotFoundError as e:
-#         alert(text="Settings.json file was not loaded. Please Load the file and try again.", title="Settings File not Found", button="OK")
-
-# #===============================================
-# data = openSettings() #|||||||||||||||||||||||||
-# #===============================================
-# depth = data["depth"]
-# keywords = data["keywords"]
-# states = data["states"]
-# debug = data["debug"]
-
 # ----------------------------------------------------------------------------------------------------------------------
 class Suchen:
 
@@ -129,12 +111,13 @@ class Hoga:
         x.field_names = ['name', 'email', 'entry_date', 'state']  
         try:           
           x.add_row([name[1], email, entry_date, state])
-          print(f'{name[1]} - {email} - {entry_date}')
+          print(f'{idx}) {name[1]} - {email} - {entry_date} - {state}')
           emails.append((link[0], name[1], email, entry_date, state))
-          if idx > 5:
-            print(x.get_string(start=idx - 5, end=idx))
-          else:
-            print(x)
+          if self.debug:
+            if idx > 5:
+              print(x.get_string(start=idx - 5, end=idx))
+            else:
+              print(x)
         except IndexError:
           print(f'{name} - {email} - {entry_date}')
           emails.append((link[0], name[1], email, entry_date, state))
@@ -274,7 +257,7 @@ def searchHoga(keywords, states, hoga, debug, fn):
     for state in states:
       print(f'searching for the state: {state}..')
       # hoga_url = f"https://www.hogapage.de/jobs/suche?q={key}&where={state}&radius=200"
-      revised_hoga = f"https://www.hogapage.de/jobs/suche?q=Auszubildende+m%2Fw%2Fd+{key}%2F-frau&where={state}&radius=200"
+      revised_hoga = f"https://www.hogapage.de/jobs/suche?q=Auszubildende+m%2Fw%2Fd+{key}&where={state}&radius=200"
       try:
         source = fn(revised_hoga)
         h = Hoga(origin_hoga, source, debug)
