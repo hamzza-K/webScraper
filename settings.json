@@ -1,5 +1,5 @@
 {
-    "debug" : false,
+    "debug" : true,
     "unique": true,
     "depth": 10,
     
@@ -24,8 +24,9 @@
     "arbeitsa": {
         "searchSize": 100,
         "umkreis": 200,
-        "page": 4,
-        "days": 5
+        "page": 1,
+        "days": 5,
+        "arbeitszeit": "vz;tz;snw;ho;mj"
     }, 
 
     "hoga": {
@@ -44,8 +45,8 @@
         "override": false
     },
 
-    "searchArbeitsa": false,
-    "searchCareer": true,
+    "searchArbeitsa": true,
+    "searchCareer": false,
     "searchHoga": false,
     "searchAzubiyo": false,
     "searchStellen": false,

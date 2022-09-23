@@ -1,4 +1,4 @@
-import sys, re, warnings, json, requests, base64, time, schedule, datetime, os
+import sys, re, warnings, json, requests, base64, time, schedule, datetime, os, traceback
 
 import selenium
 from selenium import webdriver
@@ -14,7 +14,7 @@ import pandas as pd
 from pymsgbox import *
 from prettytable import PrettyTable
 
-from kratzen import searchHoga, searchStellen, Suchen
+from kratzen import searchHoga, searchStellen, Suchen, Hoga
 from career import CareerHotel
 from azubyio import Azubiyo
 
@@ -48,6 +48,9 @@ def getDriver(hide: bool = True):
   chrome_options.add_argument('--no-sandbox')
   chrome_options.add_argument('--disable-dev-shm-usage')
   chrome_options.add_argument('log-level=3')
+  chrome_options.add_argument("user-data-dir=C:\\Users\\hk151\\AppData\\Local\\Google\\Chrome\\User Data")
+  chrome_options.add_argument('profile-directory=Default')
+
   return webdriver.Chrome(data['pathToDriver'],options=chrome_options)
 #------------------------------------------------------------------------
 # driver = webdriver.Chrome(data['pathToDriver'],options=chrome_options)
@@ -123,12 +126,14 @@ def getContentLink(soup) -> str:
 def getExternalLink(soup) -> str:
   return soup.find('jb-job-detail-stellenbeschreibung').find('a').get('href')
 
-def getHtml(link, debug=False):
-    try:
-        html = urllib.request.urlopen(link).read()
-        return html
-    except urllib.error.HTTPError:
-        return None
+def getHtml(link, debug=True):
+  try:
+    html = urllib.request.urlopen(link).read()
+    return html
+  except:
+    if debug:
+      print(traceback.format_exc())
+    return None
 
 def tag_visible(element):
     if element.parent.name in ['style', 'script', 'head', 'title', 'meta', '[document]']:
@@ -165,7 +170,7 @@ def get_jwt():
 
     return response.json()
 
-def search(jwt, what, where, page=1, days=7, umkreis=200, searchSize=10):
+def search(jwt, what, where, page=1, days=7, umkreis=200, arbeitszeit='vz;tz;snw;ho;mj', searchSize=10):
     """search for jobs. returns a list of job references"""
     params = (
         ('angebotsart', '4'),
@@ -176,7 +181,7 @@ def search(jwt, what, where, page=1, days=7, umkreis=200, searchSize=10):
         ('veroeffentlichtseit', days),
         ('was', what),
         ('wo', where),
-        ('arbeitszeit', 'vz;tz;snw;ho;mj')
+        ('arbeitszeit', arbeitszeit)
     )
 
     headers = {
@@ -205,16 +210,23 @@ def job_details(jwt, job_ref):
 
     return response.json()
 
-def getStateAndTitle(details: dict) -> tuple:
-    """returns the state and title of the job"""
+def getState(details: dict) -> str:
+    """returns the state of the job"""
     try:
         state = details['arbeitgeberAdresse']['region']
-        title = details['titel']
     except KeyError:
-        state = None
-        title = None
+        state = "None"
     finally:
-        return state, title
+        return state
+
+def getTitle(details: dict) -> str:
+  """returns the state of the job"""
+  try:
+    title = details['titel']
+  except KeyError:
+    title = "None"
+  finally:
+    return title
 
 def getNameAndEntryDate(details: dict) -> tuple:
     """returns the name and entry date of the job"""
@@ -227,25 +239,41 @@ def getNameAndEntryDate(details: dict) -> tuple:
     finally:
         return name, entry_date
 
+def isCaptchaPresent(driver: webdriver) -> bool:
+  try:
+    driver.find_element(By.ID, 'jobdetails-kontaktdaten-heading').text
+    return True
+  except Exception:
+    return False
+
+def getCaptchaDetails(driver: webdriver) -> str:
+  try:
+    driver.find_element(By.XPATH, '//*[@id="bahf-cookie-disclaimer-modal"]/div/div/div[3]/button[2]/bahf-i18n').click()
+    return driver.find_element(By.ID, 'jobdetails-kontaktdaten-heading').text
+  except:
+    return driver.find_element(By.ID, 'jobdetails-kontaktdaten-heading').text
+
 # ----------------------------------------------------------------------------------------------------------------------
-def searchArbeitsa(key, region, page, days, size, umkreis, debug, pretty: bool = False):
+def searchArbeitsa(key: str, region: str, page: object,
+ days: int, size: str, umkreis: int, arbeitszeit: str, debug: bool, pretty: bool = False):
   print('-------------------------------------------------------------------------------------------')
   print('Searching for jobs in ' + region + ' with keyword ' + key)
   print('-------------------------------------------------------------------------------------------')
   
   scraped = []
+  d = getDriver(False)
 
   try:
     for i in range(page):
       try:
         jwt = get_jwt()
-        result = search(jwt["access_token"], key, region, i+1, days, umkreis, size)          
+        result = search(jwt["access_token"], key, region, i+1, days, umkreis, arbeitszeit, size)          
         print('-------------------------------------------------------------------------------------------')
         print('Searching page ' + str(i+1) + ' for jobs which were posted in the last ' + str(days) + ' days' + ' and are within ' + str(umkreis) + ' km of ' + region)
         print("Total number of jobs: " + str(len(result['stellenangebote'][::-1])))
         print('-------------------------------------------------------------------------------------------')
 
-        d = getDriver()
+
         patience = 3
         idx = 0
         if True:
@@ -259,9 +287,12 @@ def searchArbeitsa(key, region, page, days, size, umkreis, debug, pretty: bool =
               jobDetails = job_details(jwt["access_token"], id)
               print(f"Release date: {jobDetails['ersteVeroeffentlichungsdatum']}")
               # time.sleep(1)
-              state, title = getStateAndTitle(jobDetails)
+              state = getState(jobDetails)
+              state = state if state != "None" else region
+              title = getTitle(jobDetails)
               name, entry_date = getNameAndEntryDate(jobDetails)       
-              if state != None and title != None:
+              # if state != None and title != None:
+              if True:
                 print(f'state: {state} and title: {title}')
                 # soup = soupify(url)
                 # soup = suchify(url)
@@ -272,6 +303,12 @@ def searchArbeitsa(key, region, page, days, size, umkreis, debug, pretty: bool =
                 foundEmail = False
                 #making the driver wait
                 # driver.implicitly_wait(10)
+                if isCaptchaPresent(d):
+                  print('Captcha is Present.')
+                  print('Details:', getCaptchaDetails(d))
+                  print('------------------------------------')
+                else:
+                  print('Captcha is not Present.')
                 if isContentPresent(soup, debug):
                   text = soup.find('jb-job-detail-stellenbeschreibung').find('p').get_text(strip=True, separator='\n').splitlines()
                   for i in text[::-1]:
@@ -287,35 +324,53 @@ def searchArbeitsa(key, region, page, days, size, umkreis, debug, pretty: bool =
                 if not foundEmail and isContentLinkPresent(soup, debug):
                   link = getContentLink(soup)
                   print(f'going to {link}...')
-                  html = getHtml(link)
-                  if html:
-                    t = text_from_html(html)
-                    e = extractEmails(t)
+                  if link.split('/')[2] == 'www.hogapage.de':
+                    name, e, _ = Hoga.getEmail(link)
+                    name = name[1]
                     if e:
                       print(f'found email in the shared link! {e}')
                       print('-----------------------------------------------------------------')
                       emails.append(e)
                       foundEmail = True
-                    else:
-                      print('found no email in the shared link.')
                   else:
-                    print('Couldn\'t open the link: ' + link)
-                if not foundEmail  and isExternalLink(soup, debug):
+                    html = getHtml(link)
+                    if html:
+                      t = text_from_html(html)
+                      e = extractEmails(t)
+                    if e:
+                      print(f'found email in the shared link! {e}')
+                      print('-----------------------------------------------------------------')
+                      emails.append(e)
+                      foundEmail = True
+                else:
+                  print('found no email in the shared link.')
+                  # else:
+                  #   print('Couldn\'t open the link: ' + link)
+                if not foundEmail and isExternalLink(soup, debug):
                   link = getExternalLink(soup)
                   print(f'going to {link}...')
-                  html = getHtml(link)
-                  if html:
-                    t = text_from_html(html)
-                    e = extractEmails(t)
+                  if link.split('/')[2] == 'www.hogapage.de':
+                    name, e, _ = Hoga.getEmail(link)
+                    name = name[1]
                     if e:
-                      print(f'found email in the external link! {e}')
+                      print(f'found email in the shared link! {e}')
                       print('-----------------------------------------------------------------')
-
                       emails.append(e)
-                    else:
-                      print('found no email in the external link.')
+                      foundEmail = True
                   else:
-                    print('Couldn\'t open link: ' + link)
+                    html = getHtml(link)
+                    if html:
+                      t = text_from_html(html)
+                      e = extractEmails(t)
+                      if e:
+                        print(f'found email in the external link! {e}')
+                        print('-----------------------------------------------------------------')
+                        emails.append(e)
+                      else:
+                        print('found no email in the external link.')
+                else:
+                  print('Couldn\'t open link: ' + link)
+
                 if emails:
                   print(f'name: {name} and entry date: {entry_date} and state: {state} and title: {"Arbeitsa | " + title} and emails: {emails}')
                   print('-----------------------------------------------------------------')
@@ -343,6 +398,7 @@ def searchArbeitsa(key, region, page, days, size, umkreis, debug, pretty: bool =
               continue
       except Exception as e:
         print(e)
+        # print(traceback.format_exc())
         print('-----------------------------------------------------------------')
         print(f'Couldn\'t get the jwt token for page.')
         print('-----------------------------------------------------------------')
@@ -353,7 +409,7 @@ def searchArbeitsa(key, region, page, days, size, umkreis, debug, pretty: bool =
       print('-----------------------------------------------------------------')
       print(f'Couldn\'t get the jwt token for page. Exiting...')
       print('-----------------------------------------------------------------')
-    
+  d.quit()
   return pd.DataFrame(scraped, columns=['Title', 'Name', 'Email', 'Entry Date', 'State']) if scraped else None
   # return scraped
 
@@ -392,6 +448,7 @@ if __name__ == '__main__':
     Ergebnissseite = data['arbeitsa']['page'] # which page to scrape
     size = data['arbeitsa']['searchSize'] # number of jobs to search for each keyword
     umkreis = data['arbeitsa']['umkreis'] # radius of the search in km
+    arbeitszeit = data['arbeitsa']['arbeitszeit']
     hoga = data['hoga'] 
     hide = data['chrome']['hide']
     hotecareer_searchsize = data['hotelcareer']['searchSize']
@@ -477,7 +534,7 @@ if __name__ == '__main__':
         for key in keywords:
           for region in regions:
             try:
-              df4 = searchArbeitsa(key, region, Ergebnissseite, days, size, umkreis, debug)
+              df4 = searchArbeitsa(key, region, Ergebnissseite, days, size, umkreis, arbeitszeit, debug)
               if df4 is not None:
                 df = pd.concat([df, df4])
             except Exception as e:
@@ -487,7 +544,7 @@ if __name__ == '__main__':
               print(e)
               print('Trying again in 30 seconds...')
               time.sleep(30)
-              df4 = searchArbeitsa(key, region, Ergebnissseite, days, size, umkreis, debug)
+              df4 = searchArbeitsa(key, region, Ergebnissseite, days, size, umkreis, arbeitszeit, debug)
               if df4 is not None:
                 df = pd.concat([df, df4])
 

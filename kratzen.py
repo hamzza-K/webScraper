@@ -1,3 +1,4 @@
+from importlib.metadata import entry_points
 import requests, time
 from prettytable import PrettyTable
 from bs4 import BeautifulSoup
@@ -69,6 +70,25 @@ class Hoga:
       print('returning total of ' + str(len(links)) + ' links')
     return links
 
+  @staticmethod
+  def getEmail(link: str) -> str:
+    email = None
+    newlink = Suchen().create_session(link)
+    soup = BeautifulSoup(newlink.text, 'html.parser')
+    meta = soup.find('div', {'class':'hp_job-detail-meta'})
+    a = meta.find_all('a')
+    name = soup.find('div', {'class':'hp_job-detail-meta'}).\
+    find('div', {'class':'position-relative mb-hp_smaller'}).\
+    get_text(strip=True, separator='\n').splitlines()
+    entry_date = soup.find('div', {'class':'hp_job-detail-header'}).\
+    find('li', {'class':'icon-clock m-0'}).text
+    for i in range(len(a)):
+      if a[i].get('content'):
+        email = a[i].get('content')
+        if email:
+          print(f'email found!')
+          break
+    return name, email, entry_date
 
   def findEmail(self, hoga, state=None) -> list:
     emails = []
@@ -79,31 +99,32 @@ class Hoga:
 
     if not searchAll:
       links = links[:limit] if limit < len(links) else links
-      print('searching only ' + str(limit) + ' links')
+      print('searching only ' + len(links) + ' links')
 
-    idx = 0
-    for link in links:
-      idx += 1
+    # idx = 0
+    for e, link in enumerate(links):
+      # idx += 1
       l = self.origin + link[1]
-      newlink = Suchen().create_session(l)
+      # newlink = Suchen().create_session(l)
 
       if self.debug:
-        print(str(idx) + ')')
+        print(str(e) + ')')
         print(f'going to {l}')
-      soup = BeautifulSoup(newlink.text, 'html.parser')
-      meta = soup.find('div', {'class':'hp_job-detail-meta'})
-      a = meta.find_all('a')
-      name = soup.find('div', {'class':'hp_job-detail-meta'}).\
-      find('div', {'class':'position-relative mb-hp_smaller'}).\
-      get_text(strip=True, separator='\n').splitlines()
-      entry_date = soup.find('div', {'class':'hp_job-detail-header'}).\
-      find('li', {'class':'icon-clock m-0'}).text
-      for i in range(len(a)):
-        if a[i].get('content'):
-          email = a[i].get('content')
-          if self.debug:
-            print(f'email found!')
-          break
+      # soup = BeautifulSoup(newlink.text, 'html.parser')
+      # meta = soup.find('div', {'class':'hp_job-detail-meta'})
+      # a = meta.find_all('a')
+      # name = soup.find('div', {'class':'hp_job-detail-meta'}).\
+      # find('div', {'class':'position-relative mb-hp_smaller'}).\
+      # get_text(strip=True, separator='\n').splitlines()
+      # entry_date = soup.find('div', {'class':'hp_job-detail-header'}).\
+      # find('li', {'class':'icon-clock m-0'}).text
+      # for i in range(len(a)):
+      #   if a[i].get('content'):
+      #     email = a[i].get('content')
+      #     if self.debug:
+      #       print(f'email found!')
+      #     break
+      name, email, entry_date = Hoga.getEmail(l)
 
 
       if state:
@@ -111,11 +132,11 @@ class Hoga:
         x.field_names = ['name', 'email', 'entry_date', 'state']  
         try:           
           x.add_row([name[1], email, entry_date, state])
-          print(f'{idx}) {name[1]} - {email} - {entry_date} - {state}')
+          print(f'{e}) {name[1]} - {email} - {entry_date} - {state}')
           emails.append((link[0], name[1], email, entry_date, state))
           if self.debug:
-            if idx > 5:
-              print(x.get_string(start=idx - 5, end=idx))
+            if e > 5:
+              print(x.get_string(start=e - 5, end=e))
             else:
               print(x)
         except IndexError:
