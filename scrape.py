@@ -246,12 +246,15 @@ def isCaptchaPresent(driver: webdriver) -> bool:
   except Exception:
     return False
 
-def getCaptchaDetails(driver: webdriver) -> str:
+def getCaptchaDetails(driver: webdriver) -> tuple:
   try:
-    driver.find_element(By.XPATH, '//*[@id="bahf-cookie-disclaimer-modal"]/div/div/div[3]/button[2]/bahf-i18n').click()
-    return driver.find_element(By.ID, 'jobdetails-kontaktdaten-heading').text
+    # driver.find_element(By.XPATH, '//*[@id="bahf-cookie-disclaimer-modal"]/div/div/div[3]/button[2]/bahf-i18n').click()
+    email = driver.find_element(By.ID, 'jobdetails-kontaktdaten').find_element(By.ID, 'jobdetail-angebotskontakt-email').text
+    name = driver.find_element(By.ID, 'jobdetail-angebotskontakt-adresse').text
+    return name, email  
   except:
-    return driver.find_element(By.ID, 'jobdetails-kontaktdaten-heading').text
+    print(traceback.format_exc())
+    return None, None
 
 # ----------------------------------------------------------------------------------------------------------------------
 def searchArbeitsa(key: str, region: str, page: object,
@@ -294,15 +297,11 @@ def searchArbeitsa(key: str, region: str, page: object,
               # if state != None and title != None:
               if True:
                 print(f'state: {state} and title: {title}')
-                # soup = soupify(url)
-                # soup = suchify(url)
                 d.get(url)
                 html = d.page_source
                 soup = BeautifulSoup(html, 'html.parser')
                 emails = []
                 foundEmail = False
-                #making the driver wait
-                # driver.implicitly_wait(10)
                 if isCaptchaPresent(d):
                   print('Captcha is Present.')
                   print('Details:', getCaptchaDetails(d))
