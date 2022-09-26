@@ -1,136 +1,44 @@
-import sys
+import re, time
 import traceback
-import re, json, time
+from typing import List, Tuple
 import pandas as pd
-import urllib.request
-from typing import Dict
-from bs4 import BeautifulSoup
-from bs4.element import Comment
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.common.by import By
-from selenium.common.exceptions import NoSuchElementException
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import Select
-from selenium.webdriver.common.keys import Keys
-from pymsgbox import *
 from kratzen import Suchen
+from bs4 import BeautifulSoup
+from soupmonad import SoupMonad
+from shortcuts import soupify, text_from_html, extractEmails
+from bs4.element import Comment
+from settings import getDriver, tearDown
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import Select
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.support import expected_conditions as EC
 
-postwithemail = 'https://www.azubiyo.de/stellenanzeigen/ausbildung-zum-koch-m-w-d_drv-bayern-sued_gde5bg21/'
-url = "https://www.azubiyo.de/ausbildung/hamburg/hotefachmann"
-original_url = "https://www.azubiyo.de"
-uurl = "https://www.azubiyo.de/ausbildung/"
-xpath = "/html/body/div[7]/main/div[3]/div/div[3]/div/div[1]/div"
+# def soupify(url):
+#   driver = getDriver()
+#   driver.get(url)
+#   html = driver.page_source
+#   soup = BeautifulSoup(html, 'html.parser')
+#   tearDown(driver)
+#   return soup
 
+# def tag_visible(element):
+#     if element.parent.name in ['style', 'script', 'head', 'title', 'meta', '[document]']:
+#         return False
+#     if isinstance(element, Comment):
+#         return False
+#     return True
 
-pattern = re.compile(r'[\w.+-]+@[\w-]+\.[\w.-]+')
+# def text_from_html(soup):
+#     # soup = BeautifulSoup(body, 'html.parser')
+#     texts = soup.findAll(text=True)
+#     visible_texts = filter(tag_visible, texts)  
+#     return u" ".join(t.strip() for t in visible_texts)
 
-
-def openSettings():
-    try:
-        with open("settings.json", encoding='utf-8-sig') as f:
-            data = json.load(f)
-
-        print('loading settings.json file..')
-        return data
-    except FileNotFoundError as e:
-        alert(text="Settings.json file was not loaded. Please Load the file and try again.", title="Settings File not Found", button="OK")
-        sys.exit()
-
-#===============================================
-data = openSettings() #|||||||||||||||||||||||||
-#===============================================
-
-# ------------------------Selenium Configuration--------------------------------------------
-sys.path.insert(0,'/usr/lib/chromium-browser/chromedriver')
-from selenium import webdriver
-chrome_options = webdriver.ChromeOptions()
-if data['chrome']['hide']:
-  chrome_options.add_argument('--headless')
-chrome_options.add_argument('--log-level=3')
-chrome_options.add_argument('--no-sandbox')
-chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.0.0 Safari/537.36")
-chrome_options.add_argument('--disable-dev-shm-usage')
-chrome_options.add_argument("window-size=1920x1080")
-# ------------------------Selenium Configuration--------------------------------------------
-
-
-def getDriver():
-  return webdriver.Chrome(data['pathToDriver'],options=chrome_options)
-
-def tearDown(driver):
-  driver.quit()
-
-def soupify(url):
-  driver = getDriver()
-  driver.get(url)
-  html = driver.page_source
-  soup = BeautifulSoup(html, 'html.parser')
-  tearDown(driver)
-  return soup
-
-# ------------------------SoupMonad--------------------------------------------
-class SoupMonad:
-  def __init__(self, value: object = None, error_status: Dict = None):
-    self.value = value
-    self.error_status = error_status
-
-  def __repr__(self):
-    return f"SoupMonad({self.value}, {self.error_status})"
-
-  def unwrap(self):
-    return self.value
-
-  def find(self, *args) -> 'SoupMonad':
-    if self.error_status:
-      return SoupMonad(None, error_status=self.error_status)
-    try:
-      result = self.value.find(*args,)
-      return SoupMonad(result)
-    except Exception as e:
-      failure_status = {
-          'trace': traceback.format_exc(),
-          'exc': e,
-          'args': args,
-      }
-      return SoupMonad(None, error_status=failure_status)
-
-  def findAll(self, *args) -> 'SoupMonad':
-    if self.error_status:
-      return SoupMonad(None, error_status=self.error_status)
-    try:
-      result = self.value.findAll(*args,)
-      return SoupMonad(result)
-    except Exception as e:
-      failure_status = {
-          'trace': traceback.format_exc(),
-          'exc': e,
-          'args': args,
-      }
-      return SoupMonad(None, error_status=failure_status)
-    
-  @staticmethod
-  def wrap(value):
-    return SoupMonad(value)
-# ------------------------SoupMonad--------------------------------------------
-
-def tag_visible(element):
-    if element.parent.name in ['style', 'script', 'head', 'title', 'meta', '[document]']:
-        return False
-    if isinstance(element, Comment):
-        return False
-    return True
-
-def text_from_html(soup):
-    # soup = BeautifulSoup(body, 'html.parser')
-    texts = soup.findAll(text=True)
-    visible_texts = filter(tag_visible, texts)  
-    return u" ".join(t.strip() for t in visible_texts)
-
-def extractEmails(input_string) -> str:
-  return re.findall(r'[\w.+-]+@[\w-]+\.[\w.-]+', input_string)
-
-
-html = urllib.request.urlopen(postwithemail).read()
+# def extractEmails(input_string) -> str:
+#   return re.findall(r'[\w.+-]+@[\w-]+\.[\w.-]+', input_string)
 
 #====================================================================================
 # ------------------------------------ Azubiyo --------------------------------------
@@ -161,26 +69,39 @@ class Azubiyo:
     def drives(self, index=4):
       try:
         self.driver.get(Azubiyo.url)
+        #Handles the `pop-up` that appears on every new instance of a webdriver.
         WebDriverWait(self.driver, 5).until(EC.element_to_be_clickable((By.XPATH, '//*[@id="cmpwelcomebtnyes"]/a'))).send_keys(Keys.ENTER)
         
         self.driver.maximize_window()
         self.driver.implicitly_wait(15)
 
-        search = '//*[@id="hideElementWhenScrollTopReached"]/div[1]/div/div/div[1]/div/span/input'
-        to = '//*[@id="hideElementWhenScrollTopReached"]/div[1]/div/div/div[2]/div/div[1]/span/input'
+        # search XPATH
+        search = '//*[@id="filterSettingsSearchSubjectSearchBox"]'
+        # location XPATH
+        to = '//*[@id="filterSettingsSearchLocationSearchBox"]'
+        button = '//*[@id="find-jobs-action-btn"]/div/button'
         self.driver.find_element(By.XPATH, to).send_keys(self.state)
-        # WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.XPATH, to))).send_keys(self.state)
-        self.driver.implicitly_wait(15)
         # time.sleep(3)
-        self.driver.find_element(By.XPATH, search).send_keys('')
+        # time.sleep(3)
+        # self.driver.implicitly_wait(15)
+        self.driver.find_element(By.XPATH, search).send_keys(self.keyword)
         time.sleep(3)
         self.driver.find_element(By.XPATH, search).send_keys(self.keyword)
-        # WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.XPATH, search))).send_keys(self.keyword)
+        ActionChains(self.driver).move_by_offset(100, 100).pause(2).click().perform()
+        time.sleep(5)
         self.driver.implicitly_wait(15)
-        time.sleep(3)
+        # self.driver.find_element(By.XPATH, to).send_keys(self.state)
+        # time.sleep(3)
+        # self.driver.find_element(By.XPATH, button).click()
+        # self.driver.find_element(By.XPATH, to).send_keys(Keys.ENTER)
+        # time.sleep(3)
+        # self.driver.implicitly_wait(15)
+        # WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.XPATH, search))).send_keys(self.keyword)
+        #Dropdown in the site. 
         option = self.driver.find_element(By.XPATH, '//*[@id="hideElementWhenScrollTopReached"]/div[1]/div/div/div[2]/div/div[2]/select')
         drop = Select(option)
         drop.select_by_index(index)
+        time.sleep(3)
 
         self.driver.find_element(By.XPATH, '/html/body/div[7]/main/div[3]/div/div[3]/div')
 
@@ -190,38 +111,45 @@ class Azubiyo:
         except NoSuchElementException:
           self.maxPages = 1
 
-        self.numJobs = self.driver.find_element(By.XPATH, '/html/body/div[7]/main/div[3]/div/div[2]/h2').text.split()[0]
-        print('Posted number of jobs: %r' % self.numJobs)
+        posted_jobs_xpath = '/html/body/div[7]/main/div[3]/div/div[2]/h2'
+        try:
+          self.numJobs = self.driver.find_element(By.XPATH, posted_jobs_xpath).text.split()[0]
+        except:
+          self.numJobs = 0
+        print(f'Posted number of jobs: {self.numJobs}')
+        # if '.' in self.numJobs:
+        #   self.numJobs = self.numJobs.split('.')[0]
         print('there are a total of %r pages' % self.maxPages)
 
 
-        if int(self.numJobs) == 0 and self.override:
-          print(f"Searching for jobs regardless of the area {self.state}")
-          return self.driver
+        # if int(self.numJobs) == 0 and self.override:
+        #   print(f"Searching for jobs regardless of the area {self.state}")
+        #   return self.driver
         
-        if int(self.numJobs) == 0:
-          print(f"No suitable jobs found in the given city: {self.state}. Skipping.")
-          return None
+        # if int(self.numJobs) == 0:
+        #   print(f"No suitable jobs found in the given city: {self.state}. Skipping.")
+          # return None
         return self.driver
-      except Exception as e:
+      except:
+        print(traceback.format_exc())
         print('cannot open %s' % self.driver.current_url)
         return None
 
-    def _linking(self, page):
+    def _linking(self, page: object) -> 'list':
       """Returns all the links and their respective titles found inside a section."""
       links = []
       for e, elem in enumerate(page.find_elements(By.TAG_NAME, 'section')):
         try:
-          title = elem.find_element(By.TAG_NAME, 'h3').text.strip(' ') 
+          title = elem.find_element(By.TAG_NAME, 'h3').text
           link = elem.find_element(By.TAG_NAME, 'a').get_attribute('href')
-          print('%r) %s | %s' % (e+1, title, link))
+          print(f'{e+1}) {title} | {link}')
           links.append((title, link))
         except NoSuchElementException:
           print(f'{e+1}) has no title')
 
       return links 
 
-    def _remainingLinks(self, n, page) -> 'list':
+    def _remainingLinks(self, n: int, page: object) -> 'list':
       links = []
       for i in range(n - 1):
         try:
@@ -268,36 +196,36 @@ class Azubiyo:
         else:
             return monad.error_status
 
-    def checkJobDescriptionEmail(self, url: str):
+    def checkJobDescriptionEmail(self, url: str) -> 'str':
       soup = soupify(url)
       text = text_from_html(soup)
       email = extractEmails(text)
       return email
 
-    def getSectionEmail(self, soup, date, t: str):
+    def getSectionEmail(self, soup: BeautifulSoup, date: str, t: str) -> 'list':
         monad = SoupMonad(soup)
         monad = monad.find('section', {'class': 'pt-3 px-3'}).\
         findAll('div', {'class': 'col-md-10'})
         emails = []
         if monad.value:
           for e, v in enumerate(monad.value):
-            title = v.text.split('\n')[2]
-            print(str(e+1) + ')', title)
+            name = v.text.split('\n')[2]
+            print(str(e+1) + ')', name)
             text = text_from_html(v)
             email = extractEmails(text)
             if email:
               print(f'found: {email}')
-              emails.append((t, title, email[0], date, self.state))
-              print("="*105)
+              emails.append((t, name, ';'.join(email), date, self.state))
+              # print("="*105)
               print(emails)
-              print("="*105)
+              print("-"*105)
             else:
-              print(f"No email found for {title}")
+              print(f"No email found for {name}")
         else:
-          return monad.error_status
+          print(monad.error_status['exc'])
         return emails
 
-    def infosec(self, lisht):
+    def infosec(self, lisht: List[Tuple]) -> 'pd.DataFrame':
       print("Checking Info Section.")
       url, title = lisht[1], lisht[0]
       info_url = url + Azubiyo.infosection
@@ -317,7 +245,7 @@ class Azubiyo:
           print('found nothing..')
           return None
 
-    def processEmails(self, lisht):
+    def processEmails(self, lisht: list):
         print(f'going to {lisht[1]}')
         return self.infosec(lisht)
         
@@ -325,28 +253,3 @@ class Azubiyo:
 #====================================================================================
 # ------------------------------------ Azubiyo --------------------------------------
 #====================================================================================
-
-
-if __name__ == "__main__":
-
-
-  keywords = data['keywords']
-  cities = data['azubiyo']['cities']
-  azyubio_area = data['azubiyo']['searchSize']
-  for key in keywords:
-    for city in cities:
-      print(f'searching for keyword: {key} and city: {city} in the area: {azyubio_area}km')
-      azu = Azubiyo(city, key, override=False, debug=True)
-      page = azu.drives(azyubio_area)
-      if page:
-        links = azu.getAllLinks(page)
-        print('posted jobs: ', azu.numJobs, type(azu.numJobs))
-        print('returning total links:', len(links))
-        if int(azu.numJobs) < len(links):
-          links = links[:int(azu.numJobs)]
-        print(f'searching for total {len(links)} links.')
-        for link in links:
-          print('Finding email for %s' % link[0])
-          print(azu.processEmails(link))
-        page.quit()
-

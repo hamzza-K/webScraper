@@ -3,7 +3,7 @@
     "unique": true,
     "depth": 10,
     
-    "keywords": ["Hotelfachmann/frau"],
+    "keywords": ["Hotelfachmann/-frau"],
     "states" : ["Baden Wutternburg", "Bayern"],
     
     "pathToDriver": "C:\\webdriver\\chromedriver",
@@ -12,9 +12,9 @@
 
 
     "chrome": {
-        "hide": false,
-        "data-dir": "C:\\Users\\hk151\\AppData\\Local\\Google\\Chrome\\User Data",
-        "profile": "Profile 3"
+        "hide": true,
+        "data-dir": "",
+        "profile": ""
     },
 
 
@@ -48,9 +48,9 @@
     },
 
     "searchArbeitsa": false,
-    "searchCareer": true,
+    "searchCareer": false,
     "searchHoga": false,
-    "searchAzubiyo": false,
+    "searchAzubiyo": true,
     "searchStellen": false,
 
     "searchEveryMinute": false,

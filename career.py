@@ -136,11 +136,11 @@ class CareerHotel:
   def tearDown(self):
     self.driver.quit()
 
-  def processScrape(self, links):
+  def processScrape(self, links: list) -> 'pd.DataFrame':
     '''Main method that scrapes the name/email/entrydate from the post.'''
     scraped = []
-    idx = 0
-    for link in links:
+    # idx = 0
+    for idx, link in enumerate(links):
       try:
         idx += 1
         url = CareerHotel.original_url + link[1]

@@ -18,6 +18,7 @@ from selemonad import SeleMonad
 from kratzen import searchHoga, searchStellen, Suchen, Hoga
 from career import CareerHotel
 from azubyio import Azubiyo
+from settings import openSettings, getDriver, tearDown, profile
 
 x = PrettyTable()
 
@@ -26,47 +27,46 @@ wiki = "https://en.wikipedia.org/wiki"
 pattern = re.compile(r"^(\w+)(,\s*\w+)*$")
 print(text2art('Kratzen'))
 
-def openSettings():
-    try:
-        with open("settings.json", encoding='utf-8-sig') as f:
-            data = json.load(f)
-
-        print('loading settings.json file..')
-        return data
-    except FileNotFoundError as e:
-        alert(text="Settings.json file was not loaded. Please Load the file and try again.", title="Settings File not Found", button="OK")
-        sys.exit()
+# def openSettings():
+#     try:
+#         with open("settings.json", encoding='utf-8-sig') as f:
+#             data = json.load(f)
+#         print('loading settings.json file..')
+#         return data
+#     except FileNotFoundError as e:
+#         alert(text="Settings.json file was not loaded. Please Load the file and try again.", title="Settings File not Found", button="OK")
+#         sys.exit()
 
 #===============================================
 data = openSettings() #|||||||||||||||||||||||||
 #===============================================
-profile = data['chrome']['profile']
-data_dir = data['chrome']['data-dir']
+# profile = data['chrome']['profile']
+# data_dir = data['chrome']['data-dir']
 #-----------------------------------------------------------------------
 # Configure the driver
-def getDriver(hide: bool = True):
-  chrome_options = webdriver.ChromeOptions()
-  if hide:
-    chrome_options.add_argument('--headless')
-  chrome_options.add_argument('--no-sandbox')
-  chrome_options.add_argument('--disable-dev-shm-usage')
-  chrome_options.add_argument('log-level=3')
-  if data_dir:
-    chrome_options.add_argument(f'user-data-dir={data_dir}')
-  if profile:
-    chrome_options.add_argument(f'profile-directory={profile}')
-  else:
-    chrome_options.add_argument(f'profile-directory=Default')
+# def getDriver(hide: bool = True):
+#   chrome_options = webdriver.ChromeOptions()
+#   if hide:
+#     chrome_options.add_argument('--headless')
+#   chrome_options.add_argument('--no-sandbox')
+#   chrome_options.add_argument('--disable-dev-shm-usage')
+#   chrome_options.add_argument('log-level=3')
+#   if data_dir:
+#     chrome_options.add_argument(f'user-data-dir={data_dir}')
+#   if profile:
+#     chrome_options.add_argument(f'profile-directory={profile}')
+#   else:
+#     chrome_options.add_argument(f'profile-directory=Default')
 
-  return webdriver.Chrome(data['pathToDriver'],options=chrome_options)
+#   return webdriver.Chrome(data['pathToDriver'],options=chrome_options)
 #------------------------------------------------------------------------
 # driver = webdriver.Chrome(data['pathToDriver'],options=chrome_options)
 
 # def getDriver():
 #   return webdriver.Chrome(data['pathToDriver'],options=chrome_options)
 
-def tearDown(driver):
-    driver.quit()
+# def tearDown(driver):
+#     driver.quit()
 
 
 def soupify(url):
@@ -621,7 +621,7 @@ if __name__ == '__main__':
               links = azu.getAllLinks(page)
               print('posted jobs: ', azu.numJobs)
               print('returning total links:', len(links))
-              if int(azu.numJobs) < len(links):
+              if 0 < int(azu.numJobs) < len(links):
                 links = links[:int(azu.numJobs)]
               print(f'searching for total {len(links)} links.')
               for link in links:
