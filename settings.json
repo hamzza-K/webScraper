@@ -4,7 +4,7 @@
     "depth": 10,
     
     "keywords": ["Hotelfachmann/frau"],
-    "states" : ["Aufhofen (Oberbayern)"],
+    "states" : ["Baden Wutternburg", "Bayern"],
     
     "pathToDriver": "C:\\webdriver\\chromedriver",
     "fileName": "kratzen.xlsx", 
@@ -12,7 +12,9 @@
 
 
     "chrome": {
-        "hide": false
+        "hide": false,
+        "data-dir": "C:\\Users\\hk151\\AppData\\Local\\Google\\Chrome\\User Data",
+        "profile": "Profile 3"
     },
 
 
@@ -45,8 +47,8 @@
         "override": false
     },
 
-    "searchArbeitsa": true,
-    "searchCareer": false,
+    "searchArbeitsa": false,
+    "searchCareer": true,
     "searchHoga": false,
     "searchAzubiyo": false,
     "searchStellen": false,

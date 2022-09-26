@@ -13,6 +13,7 @@ from art import text2art
 import pandas as pd
 from pymsgbox import *
 from prettytable import PrettyTable
+from selemonad import SeleMonad
 
 from kratzen import searchHoga, searchStellen, Suchen, Hoga
 from career import CareerHotel
@@ -39,6 +40,8 @@ def openSettings():
 #===============================================
 data = openSettings() #|||||||||||||||||||||||||
 #===============================================
+profile = data['chrome']['profile']
+data_dir = data['chrome']['data-dir']
 #-----------------------------------------------------------------------
 # Configure the driver
 def getDriver(hide: bool = True):
@@ -48,8 +51,12 @@ def getDriver(hide: bool = True):
   chrome_options.add_argument('--no-sandbox')
   chrome_options.add_argument('--disable-dev-shm-usage')
   chrome_options.add_argument('log-level=3')
-  chrome_options.add_argument("user-data-dir=C:\\Users\\hk151\\AppData\\Local\\Google\\Chrome\\User Data")
-  chrome_options.add_argument('profile-directory=Default')
+  if data_dir:
+    chrome_options.add_argument(f'user-data-dir={data_dir}')
+  if profile:
+    chrome_options.add_argument(f'profile-directory={profile}')
+  else:
+    chrome_options.add_argument(f'profile-directory=Default')
 
   return webdriver.Chrome(data['pathToDriver'],options=chrome_options)
 #------------------------------------------------------------------------
@@ -246,6 +253,11 @@ def isCaptchaPresent(driver: webdriver) -> bool:
   except Exception:
     return False
 
+def isCaptchaSolved(driver: webdriver) -> bool:
+  sele = SeleMonad(driver)
+  sele = sele.find_element(By.ID, 'kontaktdaten-captcha-image')
+  return sele.contains_value
+
 def getCaptchaDetails(driver: webdriver) -> tuple:
   try:
     # driver.find_element(By.XPATH, '//*[@id="bahf-cookie-disclaimer-modal"]/div/div/div[3]/button[2]/bahf-i18n').click()
@@ -304,7 +316,9 @@ def searchArbeitsa(key: str, region: str, page: object,
                 foundEmail = False
                 if isCaptchaPresent(d):
                   print('Captcha is Present.')
-                  print('Details:', getCaptchaDetails(d))
+                  solved = isCaptchaSolved(d)
+                  print(f'Captcha Solved: {solved}')
+                  # print('Details:', getCaptchaDetails(d))
                   print('------------------------------------')
                 else:
                   print('Captcha is not Present.')
@@ -381,6 +395,12 @@ def searchArbeitsa(key: str, region: str, page: object,
                       print(x.get_string(start=idx-5, end=idx))
                     else:
                       print(x)
+                  #Get the title using Selenium driver if not found from the API.
+                  if title == "None":
+                    t = SeleMonad(d)
+                    t = t.find_element(By.ID, 'jobdetails-titel')
+                    if t.contains_value:
+                      title = t.unwrap().text
                   scraped.append(['Arbeitsa | ' + title, name, emails[0][0], entry_date, state])
                 else:  
                   print(f'There were no emails found for id {id}. Skipping this job.')  
@@ -414,16 +434,23 @@ def searchArbeitsa(key: str, region: str, page: object,
 
 
 def bypass(url):
+  
   driver = getDriver()
   driver.get(url)
-  
-  WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, 'cmpbntyestxt'))).click()
+  try:
+    WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.ID, 'cmpbntyestxt'))).click()
+  except:
+    if profile:
+      print('profile loaded.')
+      pass
+    else:
+      raise Exception
   
   while 1:
     try:
       WebDriverWait(driver, 10).until(EC.element_to_be_clickable((By.CLASS_NAME, 'hp_search-list-load-more'))).click() 
     except Exception as e:
-      print(e)
+      # print(e)
       print("reached at the end.")
       break
     

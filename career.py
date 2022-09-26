@@ -10,7 +10,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support import expected_conditions as EC
 
 from kratzen import Suchen
-from SeleMonad import SeleMonad
+from selemonad import SeleMonad
 from prettytable import PrettyTable
 x = PrettyTable()
 
