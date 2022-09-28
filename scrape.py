@@ -21,7 +21,7 @@ from azubyio import Azubiyo
 from settings import openSettings, getDriver, tearDown, profile
 
 x = PrettyTable()
-
+captcha_sites = []
 warnings.filterwarnings("ignore")
 wiki = "https://en.wikipedia.org/wiki"
 pattern = re.compile(r"^(\w+)(,\s*\w+)*$")
@@ -254,16 +254,26 @@ def isCaptchaPresent(driver: webdriver) -> bool:
     return False
 
 def isCaptchaSolved(driver: webdriver) -> bool:
-  sele = SeleMonad(driver)
-  sele = sele.find_element(By.ID, 'kontaktdaten-captcha-image')
-  return sele.contains_value
+  try:
+    WebDriverWait(driver, 3).until(EC.presence_of_element_located((By.ID, 'kontaktdaten-captcha-image')))
+    return False
+  except:
+    return True
+
+  # sele = SeleMonad(driver)
+  # sele = sele.find_element(By.ID, 'kontaktdaten-captcha-image')
+  # return sele.contains_value
 
 def getCaptchaDetails(driver: webdriver) -> tuple:
   try:
     # driver.find_element(By.XPATH, '//*[@id="bahf-cookie-disclaimer-modal"]/div/div/div[3]/button[2]/bahf-i18n').click()
-    email = driver.find_element(By.ID, 'jobdetails-kontaktdaten').find_element(By.ID, 'jobdetail-angebotskontakt-email').text
-    name = driver.find_element(By.ID, 'jobdetail-angebotskontakt-adresse').text
-    return name, email  
+    # email = driver.find_element(By.ID, 'jobdetails-kontaktdaten').find_element(By.ID, 'jobdetail-angebotskontakt-email').text
+    # name = driver.find_element(By.ID, 'jobdetail-angebotskontakt-adresse').text
+    email = SeleMonad(driver)
+    email = email.find_element(By.ID, 'jobdetails-kontaktdaten')
+    if email.contains_value:
+      return email.unwrap().text
+    return 'Nothing'  
   except:
     print(traceback.format_exc())
     return None, None
@@ -276,7 +286,7 @@ def searchArbeitsa(key: str, region: str, page: object,
   print('-------------------------------------------------------------------------------------------')
   
   scraped = []
-  d = getDriver(False)
+  d = getDriver(True)
 
   try:
     for i in range(page):
@@ -316,9 +326,10 @@ def searchArbeitsa(key: str, region: str, page: object,
                 foundEmail = False
                 if isCaptchaPresent(d):
                   print('Captcha is Present.')
+                  captcha_sites.append(url)
                   solved = isCaptchaSolved(d)
                   print(f'Captcha Solved: {solved}')
-                  # print('Details:', getCaptchaDetails(d))
+                  print('Details:', getCaptchaDetails(d))
                   print('------------------------------------')
                 else:
                   print('Captcha is not Present.')
@@ -382,7 +393,7 @@ def searchArbeitsa(key: str, region: str, page: object,
                       else:
                         print('found no email in the external link.')
                 else:
-                  print('Couldn\'t open link: ' + link)
+                  print('Couldn\'t open link: ' + url)
 
                 if emails:
                   print(f'name: {name} and entry date: {entry_date} and state: {state} and title: {"Arbeitsa | " + title} and emails: {emails}')
@@ -401,7 +412,7 @@ def searchArbeitsa(key: str, region: str, page: object,
                     t = t.find_element(By.ID, 'jobdetails-titel')
                     if t.contains_value:
                       title = t.unwrap().text
-                  scraped.append(['Arbeitsa | ' + title, name, emails[0][0], entry_date, state])
+                  scraped.append(['Arbeitsa | ' + title, name, ' | '.join(map(str, emails)), entry_date, state])
                 else:  
                   print(f'There were no emails found for id {id}. Skipping this job.')  
               else:
@@ -416,8 +427,8 @@ def searchArbeitsa(key: str, region: str, page: object,
                 break
               continue
       except Exception as e:
-        print(e)
-        # print(traceback.format_exc())
+        # print(e)
+        print(traceback.format_exc())
         print('-----------------------------------------------------------------')
         print(f'Couldn\'t get the jwt token for page.')
         print('-----------------------------------------------------------------')
@@ -503,7 +514,7 @@ if __name__ == '__main__':
             # print(f"----- On {state} with {keyword} -----")
             print(f'searching for keyword: {keyword} and state: {state} in the area: {hotecareer_searchdict[str(hotecareer_searchsize)]}km')
             # print("=============================================================")
-            career = CareerHotel(state=state, keyword=keyword, driver=getDriver(hide=hide), debug=True)
+            career = CareerHotel(state=state, keyword=keyword, driver=getDriver(), debug=True)
             try:
               page = career.drives(hotecareer_searchsize)
               soup = career.soupify(page)
@@ -624,12 +635,12 @@ if __name__ == '__main__':
               if 0 < int(azu.numJobs) < len(links):
                 links = links[:int(azu.numJobs)]
               print(f'searching for total {len(links)} links.')
-              for link in links:
-                print('Finding email for %s' % link[0])
-                scraped = azu.processEmails(link)
-                if scraped is not None:
-                  df = pd.concat([df, scraped])
-                  page.quit()
+              scraped = azu.processEmails(links, page)
+              # for link in links:
+              #   print('Finding email for %s' % link[0])
+              if scraped is not None:
+                df = pd.concat([df, scraped])
+                page.quit()
 
 
     # scraped = scraped.drop_duplicates(subset='Email', keep='first')
@@ -656,6 +667,9 @@ if __name__ == '__main__':
       time_now  = datetime.datetime.now().strftime('%m_%d_%Y_%H_%M') 
       if data["fileName"] and data["outputPath"]:
         os.chdir(data["outputPath"])
+        with open('captcha_sites.txt', 'w') as f:
+          for e, link in enumerate(captcha_sites):
+            f.write(f'{e+1}) - {link}\n')
         print('-----------------------------------------------------------------')
         print(f"--- File saved to location {data['outputPath']} as {data['fileName']} ---")
         print('-----------------------------------------------------------------')

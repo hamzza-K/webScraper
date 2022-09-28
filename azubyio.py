@@ -1,17 +1,17 @@
-import re, time
+import time
+import selenium
 import traceback
-from typing import List, Tuple
 import pandas as pd
 from kratzen import Suchen
 from bs4 import BeautifulSoup
+from typing import List, Tuple
+from settings import getDriver
 from soupmonad import SoupMonad
-from shortcuts import soupify, text_from_html, extractEmails
-from bs4.element import Comment
-from settings import getDriver, tearDown
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.support.ui import WebDriverWait
+from shortcuts import soupify, text_from_html, extractEmails
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support import expected_conditions as EC
@@ -66,7 +66,7 @@ class Azubiyo:
         r = Suchen().create_session(url)
         return BeautifulSoup(r.text, 'html.parser')
 
-    def drives(self, index=4):
+    def drives(self, index=4) -> 'selenium.WebDriver':
       try:
         self.driver.get(Azubiyo.url)
         #Handles the `pop-up` that appears on every new instance of a webdriver.
@@ -76,27 +76,17 @@ class Azubiyo:
         self.driver.implicitly_wait(15)
 
         # search XPATH
-        search = '//*[@id="filterSettingsSearchSubjectSearchBox"]'
         # location XPATH
+        search = '//*[@id="filterSettingsSearchSubjectSearchBox"]'
         to = '//*[@id="filterSettingsSearchLocationSearchBox"]'
         button = '//*[@id="find-jobs-action-btn"]/div/button'
         self.driver.find_element(By.XPATH, to).send_keys(self.state)
-        # time.sleep(3)
-        # time.sleep(3)
-        # self.driver.implicitly_wait(15)
         self.driver.find_element(By.XPATH, search).send_keys(self.keyword)
         time.sleep(3)
         self.driver.find_element(By.XPATH, search).send_keys(self.keyword)
         ActionChains(self.driver).move_by_offset(100, 100).pause(2).click().perform()
-        time.sleep(5)
-        self.driver.implicitly_wait(15)
-        # self.driver.find_element(By.XPATH, to).send_keys(self.state)
-        # time.sleep(3)
-        # self.driver.find_element(By.XPATH, button).click()
-        # self.driver.find_element(By.XPATH, to).send_keys(Keys.ENTER)
-        # time.sleep(3)
-        # self.driver.implicitly_wait(15)
-        # WebDriverWait(self.driver, 5).until(EC.presence_of_element_located((By.XPATH, search))).send_keys(self.keyword)
+        # time.sleep(5)
+        self.driver.implicitly_wait(10)
         #Dropdown in the site. 
         option = self.driver.find_element(By.XPATH, '//*[@id="hideElementWhenScrollTopReached"]/div[1]/div/div/div[2]/div/div[2]/select')
         drop = Select(option)
@@ -193,8 +183,7 @@ class Azubiyo:
         find('span', {'class': 'ml-2 az-hyphenate'})
         if monad.value:
             return monad.unwrap().text
-        else:
-            return monad.error_status
+        return None
 
     def checkJobDescriptionEmail(self, url: str) -> 'str':
       soup = soupify(url)
@@ -202,52 +191,65 @@ class Azubiyo:
       email = extractEmails(text)
       return email
 
-    def getSectionEmail(self, soup: BeautifulSoup, date: str, t: str) -> 'list':
-        monad = SoupMonad(soup)
-        monad = monad.find('section', {'class': 'pt-3 px-3'}).\
+    def getSectionEmail(self, soup: BeautifulSoup, date: str, t: str) -> List[Tuple]:
+        sec = SoupMonad(soup)
+        monad = sec.find('section', {'class': 'pt-3 px-3'}).\
         findAll('div', {'class': 'col-md-10'})
         emails = []
         if monad.value:
           for e, v in enumerate(monad.value):
             name = v.text.split('\n')[2]
-            print(str(e+1) + ')', name)
+            title = sec.find('h1', {'class': 'az-hyphenate mb-2 px-0 px-xl-5 mx-0 mx-xl-5 text-left text-xl-center'})
+            if title.value:
+              title = title.unwrap().get_text() 
+            else:
+              title = t
+            print(str(e+1) + ')', name, title)
             text = text_from_html(v)
             email = extractEmails(text)
             if email:
               print(f'found: {email}')
-              emails.append((t, name, ';'.join(email), date, self.state))
+              emails.append((title, name, ';'.join(email), date, self.state))
               # print("="*105)
-              print(emails)
+              # print(emails)
               print("-"*105)
+              return emails[0]
             else:
               print(f"No email found for {name}")
         else:
-          print(monad.error_status['exc'])
+          print(monad.error_status)
         return emails
 
     def infosec(self, lisht: List[Tuple]) -> 'pd.DataFrame':
-      print("Checking Info Section.")
-      url, title = lisht[1], lisht[0]
-      info_url = url + Azubiyo.infosection
-      soup = soupify(info_url)
-      date = self.getDate(soup)
-      emails = self.getSectionEmail(soup, date, title)
-      if emails:
-        return pd.DataFrame(emails, columns=['Title', 'Name', 'Email', 'Entry Date', 'State'])
-      else:
-        print("Couldn't find the jobs in information section. Trying job description.")
-        email = self.checkJobDescriptionEmail(url)
-        if email:
-          print(f'found email: {email}')
-          return pd.DataFrame([(title, 'None', email[0], date, self.state)],
-          columns=['Title', 'Name', 'Email', 'Entry Date', 'State'])
+      scraped = []
+      for title, url in lisht:
+        print(f'Going to {title}.')
+        print("Checking Info Section.")
+        # url, title = lisht[1], lisht[0]
+        info_url = url + Azubiyo.infosection
+        soup = soupify(info_url)
+        date = self.getDate(soup)
+        emails = self.getSectionEmail(soup, date, title)
+        if emails:
+          scraped.append(emails)
+          print(scraped)
+          # return pd.DataFrame(emails, columns=['Title', 'Name', 'Email', 'Entry Date', 'State'])
         else:
-          print('found nothing..')
-          return None
+          print("Couldn't find the jobs in information section. Trying job description.")
+          email = self.checkJobDescriptionEmail(url)
+          if email:
+            print(f'found email: {email}')
+            scraped.append((title, 'None', email[0], date, self.state))
+            # print(scraped)
+            # return pd.DataFrame([(title, 'None', email[0], date, self.state)],
+            # columns=['Title', 'Name', 'Email', 'Entry Date', 'State'])
+          else:
+            print('found nothing..')
+      return pd.DataFrame(scraped, columns=['Title', 'Name', 'Email', 'Entry Date', 'State'])
 
-    def processEmails(self, lisht: list):
-        print(f'going to {lisht[1]}')
-        return self.infosec(lisht)
+    def processEmails(self, lisht: list) -> 'pd.DataFrame':
+      # print(f'going to {lisht[1]}')
+      return self.infosec(lisht)
         
         
 #====================================================================================

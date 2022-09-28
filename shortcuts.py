@@ -3,13 +3,18 @@ from bs4 import BeautifulSoup
 from bs4.element import Comment
 from settings import getDriver, tearDown
 
-def soupify(url):
-  driver = getDriver()
-  driver.get(url)
-  html = driver.page_source
-  soup = BeautifulSoup(html, 'html.parser')
-  tearDown(driver)
-  return soup
+def soupify(url, driver=None):
+    if driver:
+        driver.get(url)
+    else:
+        driver = getDriver()
+        driver.get(url)
+    html = driver.page_source
+    soup = BeautifulSoup(html, 'html.parser')
+    tearDown(driver)
+    return soup
+
+
 
   
 
@@ -29,4 +34,4 @@ def text_from_html(soup):
     return u" ".join(t.strip() for t in visible_texts)
 
 def extractEmails(input_string: str) -> list:
-  return re.findall(r'[\w.+-]+@[\w-]+\.[\w.-]+', input_string)
+    return re.findall(r'[\w.+-]+@[\w-]+\.[\w.-]+', input_string)

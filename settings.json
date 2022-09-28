@@ -4,7 +4,7 @@
     "depth": 10,
     
     "keywords": ["Hotelfachmann/-frau"],
-    "states" : ["Baden Wutternburg", "Bayern"],
+    "states" : ["Bayern"],
     
     "pathToDriver": "C:\\webdriver\\chromedriver",
     "fileName": "kratzen.xlsx", 
@@ -12,9 +12,9 @@
 
 
     "chrome": {
-        "hide": true,
-        "data-dir": "",
-        "profile": ""
+        "hide": false,
+        "data-dir": "C:\\Users\\hk151\\AppData\\Local\\Google\\Chrome\\User Data",
+        "profile": "Default"
     },
 
 
@@ -47,10 +47,10 @@
         "override": false
     },
 
-    "searchArbeitsa": false,
+    "searchArbeitsa": true,
     "searchCareer": false,
     "searchHoga": false,
-    "searchAzubiyo": true,
+    "searchAzubiyo": false,
     "searchStellen": false,
 
     "searchEveryMinute": false,
