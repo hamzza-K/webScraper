@@ -12,7 +12,7 @@
 
 
     "chrome": {
-        "hide": false,
+        "hide": true,
         "data-dir": "C:\\Users\\hk151\\AppData\\Local\\Google\\Chrome\\User Data",
         "profile": "Default"
     },

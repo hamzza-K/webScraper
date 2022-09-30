@@ -1,6 +1,7 @@
 import sys, json
 from pymsgbox import alert
 from selenium import webdriver
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 
 
 
@@ -15,6 +16,10 @@ def openSettings():
         sys.exit()
 
 data = openSettings()
+
+caps = DesiredCapabilities.CHROME
+caps['goog:loggingPrefs'] = {'performance': 'ALL'}
+
 profile = data['chrome']['profile']
 data_dir = data['chrome']['data-dir']
 hide = data['chrome']['hide']
@@ -27,6 +32,7 @@ def getDriver(arbeitsa=False):
   chrome_options.add_argument('--no-sandbox')
   chrome_options.add_argument('--disable-dev-shm-usage')
   chrome_options.add_argument('log-level=3')
+  chrome_options.add_argument("window-size=1900x1200")
   if arbeitsa and data_dir:
     chrome_options.add_argument(f'user-data-dir={data_dir}')
   if arbeitsa and profile:
@@ -34,7 +40,7 @@ def getDriver(arbeitsa=False):
   # else:
   #   chrome_options.add_argument(f'profile-directory=Default')
 
-  return webdriver.Chrome(data['pathToDriver'],options=chrome_options)
+  return webdriver.Chrome(data['pathToDriver'],options=chrome_options, desired_capabilities=caps)
 #------------------------------------------------------------------------
 def tearDown(driver):
     driver.quit()

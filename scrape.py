@@ -11,7 +11,7 @@ from bs4.element import Comment
 import urllib.request
 from art import text2art
 import pandas as pd
-from pymsgbox import *
+from pymsgbox import alert
 from prettytable import PrettyTable
 from selemonad import SeleMonad
 
