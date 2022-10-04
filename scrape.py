@@ -1,7 +1,6 @@
 import sys, re, warnings, json, requests, base64, time, schedule, datetime, os, traceback
 
 import selenium
-from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -19,6 +18,7 @@ from kratzen import searchHoga, searchStellen, Suchen, Hoga
 from career import CareerHotel
 from azubyio import Azubiyo
 from settings import openSettings, getDriver, tearDown, profile
+from arbeitsa import isCaptchaPresent, processCaptchaJobs
 
 x = PrettyTable()
 captcha_sites = []
@@ -27,46 +27,9 @@ wiki = "https://en.wikipedia.org/wiki"
 pattern = re.compile(r"^(\w+)(,\s*\w+)*$")
 print(text2art('Kratzen'))
 
-# def openSettings():
-#     try:
-#         with open("settings.json", encoding='utf-8-sig') as f:
-#             data = json.load(f)
-#         print('loading settings.json file..')
-#         return data
-#     except FileNotFoundError as e:
-#         alert(text="Settings.json file was not loaded. Please Load the file and try again.", title="Settings File not Found", button="OK")
-#         sys.exit()
-
 #===============================================
 data = openSettings() #|||||||||||||||||||||||||
 #===============================================
-# profile = data['chrome']['profile']
-# data_dir = data['chrome']['data-dir']
-#-----------------------------------------------------------------------
-# Configure the driver
-# def getDriver(hide: bool = True):
-#   chrome_options = webdriver.ChromeOptions()
-#   if hide:
-#     chrome_options.add_argument('--headless')
-#   chrome_options.add_argument('--no-sandbox')
-#   chrome_options.add_argument('--disable-dev-shm-usage')
-#   chrome_options.add_argument('log-level=3')
-#   if data_dir:
-#     chrome_options.add_argument(f'user-data-dir={data_dir}')
-#   if profile:
-#     chrome_options.add_argument(f'profile-directory={profile}')
-#   else:
-#     chrome_options.add_argument(f'profile-directory=Default')
-
-#   return webdriver.Chrome(data['pathToDriver'],options=chrome_options)
-#------------------------------------------------------------------------
-# driver = webdriver.Chrome(data['pathToDriver'],options=chrome_options)
-
-# def getDriver():
-#   return webdriver.Chrome(data['pathToDriver'],options=chrome_options)
-
-# def tearDown(driver):
-#     driver.quit()
 
 
 def soupify(url):
@@ -81,10 +44,11 @@ def soupify(url):
 
 def isContentPresent(soup, debug=False) -> bool:
   try:
-    jd = soup.find('jb-job-detail-stellenbeschreibung').find('h3')
-
+    jd = soup.find('jb-job-detail-stellenbeschreibung')
     if jd == None:
       raise AssertionError
+    else:
+      jd = jd.find('h3')
     assert jd.text == 'Stellenbeschreibung'
     if debug:
       print('post contains job description... Searching for email')
@@ -93,7 +57,6 @@ def isContentPresent(soup, debug=False) -> bool:
     if debug:
       print('post contains no job description. Moving forward..')
     return False
-
 
 def suchify(url):
   return Suchen().create_session(url)
@@ -114,10 +77,12 @@ def isContentLinkPresent(soup, debug=False) -> bool:
 def isExternalLink(soup, debug=True) -> bool:
   try:
 
-    ext = soup.find('jb-job-detail-stellenbeschreibung').find('a')
+    ext = soup.find('jb-job-detail-stellenbeschreibung')
 
     if ext == None:
       raise AssertionError
+    else:
+      ext = ext.find('a')
     assert ext.text == ' Externe Seite öffnen'
     if debug:
       print('post shares external link...trying to reach it.')
@@ -246,37 +211,30 @@ def getNameAndEntryDate(details: dict) -> tuple:
     finally:
         return name, entry_date
 
-def isCaptchaPresent(driver: webdriver) -> bool:
-  try:
-    driver.find_element(By.ID, 'jobdetails-kontaktdaten-heading').text
-    return True
-  except Exception:
-    return False
+# def isCaptchaPresent(driver: webdriver) -> bool:
+#   try:
+#     driver.find_element(By.ID, 'jobdetails-kontaktdaten-heading').text
+#     return True
+#   except Exception:
+#     return False
 
-def isCaptchaSolved(driver: webdriver) -> bool:
-  try:
-    WebDriverWait(driver, 3).until(EC.presence_of_element_located((By.ID, 'kontaktdaten-captcha-image')))
-    return False
-  except:
-    return True
+# def isCaptchaSolved(driver: webdriver) -> bool:
+#   try:
+#     WebDriverWait(driver, 3).until(EC.presence_of_element_located((By.ID, 'kontaktdaten-captcha-image')))
+#     return False
+#   except:
+#     return True
 
-  # sele = SeleMonad(driver)
-  # sele = sele.find_element(By.ID, 'kontaktdaten-captcha-image')
-  # return sele.contains_value
-
-def getCaptchaDetails(driver: webdriver) -> tuple:
-  try:
-    # driver.find_element(By.XPATH, '//*[@id="bahf-cookie-disclaimer-modal"]/div/div/div[3]/button[2]/bahf-i18n').click()
-    # email = driver.find_element(By.ID, 'jobdetails-kontaktdaten').find_element(By.ID, 'jobdetail-angebotskontakt-email').text
-    # name = driver.find_element(By.ID, 'jobdetail-angebotskontakt-adresse').text
-    email = SeleMonad(driver)
-    email = email.find_element(By.ID, 'jobdetails-kontaktdaten')
-    if email.contains_value:
-      return email.unwrap().text
-    return 'Nothing'  
-  except:
-    print(traceback.format_exc())
-    return None, None
+# def getCaptchaDetails(driver: webdriver) -> tuple:
+#   try:
+#     email = SeleMonad(driver)
+#     email = email.find_element(By.ID, 'jobdetails-kontaktdaten')
+#     if email.contains_value:
+#       return email.unwrap().text
+#     return 'Nothing'  
+#   except:
+#     print(traceback.format_exc())
+#     return None, None
 
 # ----------------------------------------------------------------------------------------------------------------------
 def searchArbeitsa(key: str, region: str, page: object,
@@ -326,10 +284,11 @@ def searchArbeitsa(key: str, region: str, page: object,
                 foundEmail = False
                 if isCaptchaPresent(d):
                   print('Captcha is Present.')
+                  processCaptchaJobs(d, url)
                   captcha_sites.append(url)
-                  solved = isCaptchaSolved(d)
-                  print(f'Captcha Solved: {solved}')
-                  print('Details:', getCaptchaDetails(d))
+                  # solved = isCaptchaSolved(d)
+                  # print(f'Captcha Solved: {solved}')
+                  # print('Details:', getCaptchaDetails(d))
                   print('------------------------------------')
                 else:
                   print('Captcha is not Present.')
@@ -415,8 +374,8 @@ def searchArbeitsa(key: str, region: str, page: object,
                   scraped.append(['Arbeitsa | ' + title, name, ' | '.join(map(str, emails)), entry_date, state])
                 else:  
                   print(f'There were no emails found for id {id}. Skipping this job.')  
-              else:
-                print('Link is not valid')
+              # else:
+              #   print('Link is not valid')
             except KeyError:
               print(f'state {region} not recognized for this offer. Moving to the next one.')
               patience -= 1
