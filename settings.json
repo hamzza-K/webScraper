@@ -4,7 +4,7 @@
     "depth": 10,
     
     "keywords": ["Hotelfachmann/-frau"],
-    "states" : ["Baden-Württemberg", "Bayern", "Bremen", "Hessen", "Hamburg", "Niedersachen", "Nordrhein-Westfalen", "Rheinland-Pfalz", "Saarland", "Schleswig-Holstein."],
+    "states" : [ "Hamburg"],
     
     "pathToDriver": "C:\\webdriver\\chromedriver",
     "fileName": "kratzen.xlsx", 
