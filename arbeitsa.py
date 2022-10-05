@@ -258,10 +258,9 @@ def getState(details: dict) -> str:
     """returns the state of the job"""
     try:
         state = details['arbeitgeberAdresse']['region']
-    except KeyError:
-        state = "None"
-    finally:
         return state
+    except:
+        return None
 
 def getTitle(details: dict) -> str:
   """returns the state of the job"""
@@ -285,7 +284,7 @@ def getNameAndEntryDate(details: dict) -> tuple:
 
 #-------------------------------------------------------------------------------------------------
 def searchArbeitsa(key: str, region: str, page: int,
- days: int, size: str, umkreis: int, arbeitszeit: str, debug: bool, pretty: bool = False):
+ days: int, size: str, umkreis: int, arbeitszeit: str, captcha: bool, debug: bool, pretty: bool = False):
   print('-------------------------------------------------------------------------------------------')
   print('Searching for jobs in ' + region + ' with keyword ' + key)
   print('-------------------------------------------------------------------------------------------')
@@ -317,7 +316,7 @@ def searchArbeitsa(key: str, region: str, page: int,
               jobDetails = job_details(jwt["access_token"], id)
               print(f"Release date: {jobDetails['ersteVeroeffentlichungsdatum']}")
               state = getState(jobDetails)
-              state = state if state != "None" else region
+              state = state if state else region
               title = getTitle(jobDetails)
               name, entry_date = getNameAndEntryDate(jobDetails)
               if True:
@@ -327,7 +326,7 @@ def searchArbeitsa(key: str, region: str, page: int,
                 soup = BeautifulSoup(html, 'html.parser')
                 emails = []
                 foundEmail = False
-                if isCaptchaPresent(d):
+                if captcha and isCaptchaPresent(d):
                   print('Captcha is Present.')
                   val = processCaptchaJobs(d, url)
                   if val:

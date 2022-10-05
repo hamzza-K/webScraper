@@ -69,9 +69,10 @@ if __name__ == '__main__':
     size = data['arbeitsa']['searchSize'] # number of jobs to search for each keyword
     umkreis = data['arbeitsa']['umkreis'] # radius of the search in km
     arbeitszeit = data['arbeitsa']['arbeitszeit']
-    hoga = data['hoga'] 
-    hide = data['chrome']['hide']
-    hotecareer_searchsize = data['hotelcareer']['searchSize']
+    captcha: bool = data['arbeitsa']['LookForCaptcha']
+    hoga: dict = data['hoga'] 
+    hide: bool = data['chrome']['hide']
+    hotecareer_searchsize: int = data['hotelcareer']['searchSize']
     
     hotecareer_searchdict = {'0': 'exact',
                              '1': '20',
@@ -153,7 +154,7 @@ if __name__ == '__main__':
         for key in keywords:
           for region in regions:
             try:
-              df4 = searchArbeitsa(key, region, Ergebnissseite, days, size, umkreis, arbeitszeit, debug)
+              df4 = searchArbeitsa(key, region, Ergebnissseite, days, size, umkreis, arbeitszeit, captcha, debug)
               if df4 is not None:
                 df = pd.concat([df, df4])
             except Exception as e:
@@ -163,7 +164,7 @@ if __name__ == '__main__':
               print(e)
               print('Trying again in 30 seconds...')
               time.sleep(30)
-              df4 = searchArbeitsa(key, region, Ergebnissseite, days, size, umkreis, arbeitszeit, debug)
+              df4 = searchArbeitsa(key, region, Ergebnissseite, days, size, umkreis, arbeitszeit, captcha, debug)
               if df4 is not None:
                 df = pd.concat([df, df4])
 

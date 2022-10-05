@@ -28,7 +28,8 @@
         "umkreis": 200,
         "page": 1,
         "days": 5,
-        "arbeitszeit": "vz;tz;snw;ho;mj"
+        "arbeitszeit": "vz;tz;snw;ho;mj",
+        "LookForCaptcha": true
     }, 
 
     "hoga": {
