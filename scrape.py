@@ -97,7 +97,7 @@ if __name__ == '__main__':
             # print(f"----- On {state} with {keyword} -----")
             print(f'searching for keyword: {keyword} and state: {state} in the area: {hotecareer_searchdict[str(hotecareer_searchsize)]}km')
             # print("=============================================================")
-            career = CareerHotel(state=state, keyword=keyword, driver=getDriver(), debug=True)
+            career = CareerHotel(state=state, keyword=keyword, driver=getDriver(), debug=debug)
             try:
               page = career.drives(hotecareer_searchsize)
               soup = career.soupify(page)
@@ -211,12 +211,12 @@ if __name__ == '__main__':
               if 0 < int(azu.numJobs) < len(links):
                 links = links[:int(azu.numJobs)]
               print(f'searching for total {len(links)} links.')
-              scraped = azu.processEmails(links, page)
+              page.quit()
+              scraped = azu.processEmails(links)
               # for link in links:
               #   print('Finding email for %s' % link[0])
               if scraped is not None:
                 df = pd.concat([df, scraped])
-                page.quit()
 
 
   # =============================================================================

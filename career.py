@@ -49,7 +49,6 @@ class CareerHotel:
   def soupify(self, obj):
     return BeautifulSoup(obj.page_source, 'html.parser')
 
-
   def extractEmails(self, input_string) -> str:
     return re.findall(r'[\w.+-]+@[\w-]+\.[\w.-]+', input_string)
 
@@ -171,7 +170,7 @@ class CareerHotel:
           t = text_from_html(soup)
           email = extractEmails(t)
           if email:
-            email = ';'.join(email) if len(email) > 1 else email
+            email = ';'.join(email)
             print(email)
           else:
             print(f'{title} didn\'t have an email..')
@@ -186,7 +185,7 @@ class CareerHotel:
         else:
           print('finding name from general text.')
           name = self.driver.find_element(By.ID, 'contact_container').text.split('\n')
-          print(name)
+          # print(name)
           if '|' in name[-1]:
             name = name[-1].split('|')[0].strip()
             print(f"general_name: {name}")
@@ -205,10 +204,9 @@ class CareerHotel:
         else:
           entrydate = None
         if email:
-          if self.debug:
-            print(f'email found: {title} | {email} | {entrydate} | {name}')
-            print('-'*95)
-          scraped.append((title, name, email, entrydate, self.state))
+          print(f'email found: {title} | {email} | {entrydate} | {name}')
+          print('-'*95)
+          scraped.append([title, name, email, entrydate, self.state])
         else:
           if self.debug:
             print(f'{title} didn\'t have an email..')

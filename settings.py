@@ -25,7 +25,7 @@ data_dir = data['chrome']['data-dir']
 hide = data['chrome']['hide']
 #-----------------------------------------------------------------------
 # Configure the driver
-def getDriver(arbeitsa=False):
+def getDriver(arbeitsa=False, hide=hide):
   chrome_options = webdriver.ChromeOptions()
   if hide:
     chrome_options.add_argument('--headless')

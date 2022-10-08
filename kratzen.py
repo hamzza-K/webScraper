@@ -66,7 +66,7 @@ class Hoga:
       links.append((title, link))
 
     if self.debug:
-      print(links)
+      # print(links)
       print('returning total of ' + str(len(links)) + ' links')
     return links
 
@@ -105,45 +105,15 @@ class Hoga:
       links = links[:limit] if limit < len(links) else links
       print('searching only ' + len(links) + ' links')
 
-    # idx = 0
     for e, link in enumerate(links):
-      # idx += 1
       l = self.origin + link[1]
-      # newlink = Suchen().create_session(l)
-
       if self.debug:
         print(str(e) + ')')
         print(f'going to {l}')
-      # soup = BeautifulSoup(newlink.text, 'html.parser')
-      # meta = soup.find('div', {'class':'hp_job-detail-meta'})
-      # a = meta.find_all('a')
-      # name = soup.find('div', {'class':'hp_job-detail-meta'}).\
-      # find('div', {'class':'position-relative mb-hp_smaller'}).\
-      # get_text(strip=True, separator='\n').splitlines()
-      # entry_date = soup.find('div', {'class':'hp_job-detail-header'}).\
-      # find('li', {'class':'icon-clock m-0'}).text
-      # for i in range(len(a)):
-      #   if a[i].get('content'):
-      #     email = a[i].get('content')
-      #     if self.debug:
-      #       print(f'email found!')
-      #     break
       name, email, entry_date = Hoga.getEmail(l)
 
       if email:
         if state:
-          # x.align = 'r'
-          # x.field_names = ['name', 'email', 'entry_date', 'state']  
-          # try:           
-          #   x.add_row([name[1], email, entry_date, state])
-          #   print(f'{e}) {name[1]} - {email} - {entry_date} - {state}')
-          #   emails.append((link[0], name[1], email, entry_date, state))
-          #   if self.debug:
-          #     if e > 5:
-          #       print(x.get_string(start=e - 5, end=e))
-          #     else:
-          #       print(x)
-          # except IndexError:
           print(f'{name} - {email} - {entry_date}')
           emails.append((link[0], name[1], email, entry_date, state))
         else:

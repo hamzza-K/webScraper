@@ -43,7 +43,7 @@ def isContentPresent(soup, debug=False) -> bool:
   if jd.value:
     if jd.value.text == 'Stellenbeschreibung':
       print('post contains job description... Searching for email')
-      print(jd.value.text)
+      # print(jd.value.text)
       return True
   return False
 
@@ -119,12 +119,15 @@ def getCaptchaUrl(driver: object) -> str:
 
 
 #=========================================================================================
-def processCaptchaJobs(driver: object, url: str) -> tuple:
+def processCaptchaJobs(driver: object, captcha: bool, url: str) -> tuple:
   if not isCookiePopUpHidden(driver):
     print('Cookie popup was present. Resolved.')
     driver = byPassCookiePopUp(driver)
   while not isCaptchaSolved(driver):
     print('Captcha was not solved.')
+    if not captcha:
+      print('Not solving the captcha.')
+      break
     addr = getCaptchaUrl(driver)
     getPic(addr).show()
     solve_captcha = pymsgbox.prompt('Please enter the captcha values.')
@@ -326,9 +329,9 @@ def searchArbeitsa(key: str, region: str, page: int,
                 soup = BeautifulSoup(html, 'html.parser')
                 emails = []
                 foundEmail = False
-                if captcha and isCaptchaPresent(d):
+                if isCaptchaPresent(d):
                   print('Captcha is Present.')
-                  val = processCaptchaJobs(d, url)
+                  val = processCaptchaJobs(d, captcha, url)
                   if val:
                     name, email = val
                     print(f'Found email in the captcha description. {email}')

@@ -5,8 +5,8 @@ import pandas as pd
 from kratzen import Suchen
 from bs4 import BeautifulSoup
 from typing import List, Tuple
-from settings import getDriver
 from soupmonad import SoupMonad
+from settings import getDriver, openSettings
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select
@@ -16,30 +16,8 @@ from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support import expected_conditions as EC
 
-# def soupify(url):
-#   driver = getDriver()
-#   driver.get(url)
-#   html = driver.page_source
-#   soup = BeautifulSoup(html, 'html.parser')
-#   tearDown(driver)
-#   return soup
-
-# def tag_visible(element):
-#     if element.parent.name in ['style', 'script', 'head', 'title', 'meta', '[document]']:
-#         return False
-#     if isinstance(element, Comment):
-#         return False
-#     return True
-
-# def text_from_html(soup):
-#     # soup = BeautifulSoup(body, 'html.parser')
-#     texts = soup.findAll(text=True)
-#     visible_texts = filter(tag_visible, texts)  
-#     return u" ".join(t.strip() for t in visible_texts)
-
-# def extractEmails(input_string) -> str:
-#   return re.findall(r'[\w.+-]+@[\w-]+\.[\w.-]+', input_string)
-
+data = openSettings()
+show = not data['azubiyo']['openBrowser']
 #====================================================================================
 # ------------------------------------ Azubiyo --------------------------------------
 #====================================================================================
@@ -60,7 +38,7 @@ class Azubiyo:
         self.override = override
         self.maxPages = 0
         self.numJobs = 0
-        self.driver = getDriver()
+        self.driver = getDriver(hide=show)
 
     def suchify(self, url):
         r = Suchen().create_session(url)
@@ -232,7 +210,7 @@ class Azubiyo:
         emails = self.getSectionEmail(soup, date, title)
         if emails:
           scraped.append(emails)
-          print(scraped)
+          # print(scraped)
           # return pd.DataFrame(emails, columns=['Title', 'Name', 'Email', 'Entry Date', 'State'])
         else:
           print("Couldn't find the jobs in information section. Trying job description.")

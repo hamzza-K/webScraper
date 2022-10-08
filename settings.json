@@ -1,10 +1,10 @@
 {
-    "debug" : true,
+    "debug" : false,
     "unique": true,
     "depth": 10,
     
     "keywords": ["Hotelfachmann/-frau"],
-    "states" : [ "Hamburg"],
+    "states" : [ "Baden-Württemberg"],
     
     "pathToDriver": "C:\\webdriver\\chromedriver",
     "fileName": "kratzen.xlsx", 
@@ -33,13 +33,14 @@
     }, 
 
     "hoga": {
-        "limit": 50,
+        "limit": 70,
         "searchAll": true
     },
 
     "azubiyo": {
         "searchSize": 4,
-        "override": false,
+        "override": true,
+        "openBrowser": true,
         "cities": ["Köln"]
     },
 
