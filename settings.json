@@ -3,8 +3,8 @@
     "unique": true,
     "depth": 10,
     
-    "keywords": ["Hotelfachmann/-frau"],
-    "states" : [ "Baden-Württemberg"],
+    "keywords": ["Restaurantfachmann"],
+    "states" : [ "Bayern"],
     
     "pathToDriver": "C:\\webdriver\\chromedriver",
     "fileName": "kratzen.xlsx", 
@@ -26,8 +26,8 @@
     "arbeitsa": {
         "searchSize": 100,
         "umkreis": 200,
-        "page": 1,
-        "days": 5,
+        "page": 7,
+        "days": 120,
         "arbeitszeit": "vz;tz;snw;ho;mj",
         "LookForCaptcha": true
     }, 

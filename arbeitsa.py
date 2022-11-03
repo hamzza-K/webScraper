@@ -304,8 +304,8 @@ def searchArbeitsa(key: str, region: str, page: int,
         print('Searching page ' + str(i+1) + ' for jobs which were posted in the last ' + str(days) + ' days' + ' and are within ' + str(umkreis) + ' km of ' + region)
         print("Total number of jobs: " + str(len(result['stellenangebote'][::-1])))
         print('-------------------------------------------------------------------------------------------')
-
-
+        # print('breaking to see the jobs.')
+        # continue
         patience = 3
         idx = 0
         if True:
