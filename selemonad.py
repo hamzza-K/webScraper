@@ -2,6 +2,7 @@ from typing import Dict
 import traceback
 
 class SeleMonad:
+  """A Monadic Class for Selenium."""
   def __init__(self, value: object=None, contains_value: bool=True, error_status: Dict=None):
     self.value = value
     self.error_status = error_status
