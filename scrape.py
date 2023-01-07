@@ -12,7 +12,7 @@ from career import CareerHotel
 from arbeitsa import searchArbeitsa
 from selenium.webdriver.common.by import By
 from kratzen import searchHoga, searchStellen
-from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support.wait import WebDriverWait
 from settings import openSettings, getDriver, tearDown, profile
 from selenium.webdriver.support import expected_conditions as EC
 
@@ -121,7 +121,7 @@ if __name__ == '__main__':
           df1 = searchHoga(keywords, regions, hoga, debug, bypass)
           if df1 is not None:
             df = pd.concat([df, df1])
-        except (Exception, selenium.common.exceptions.ElementNotInteractableException):
+        except (Exception):
           print('-----------------------------------------------------------------')
           print("--- Couldn't open the HogaPage site ---")
           print('-----------------------------------------------------------------')
@@ -130,22 +130,22 @@ if __name__ == '__main__':
           if df1 is not None:
             df = pd.concat([df, df1])
 
-        except Exception:
-          print('-----------------------------------------------------------------')
-          print("--- Couldn't open the HogaPage site ---")
-          print('-----------------------------------------------------------------')
-          print('Trying again in 30 seconds...')
-          time.sleep(30)
-          df1 = searchHoga(keywords, regions, hoga, debug, bypass)
-          if df1 is not None:
-            df = pd.concat([df, df1])
+        # except Exception:
+        #   print('-----------------------------------------------------------------')
+        #   print("--- Couldn't open the HogaPage site ---")
+        #   print('-----------------------------------------------------------------')
+        #   print('Trying again in 30 seconds...')
+        #   time.sleep(30)
+        #   df1 = searchHoga(keywords, regions, hoga, debug, bypass)
+        #   if df1 is not None:
+        #     df = pd.concat([df, df1])
         
-        except Exception:
-          print('-----------------------------------------------------------------')
-          print("--- Couldn't open the HogaPage site ---")
-          print('-----------------------------------------------------------------')
-          print('Try in another run.')
-          pass 
+        # except Exception:
+        #   print('-----------------------------------------------------------------')
+        #   print("--- Couldn't open the HogaPage site ---")
+        #   print('-----------------------------------------------------------------')
+        #   print('Try in another run.')
+        #   pass 
 
       if data['searchArbeitsa']:
         print('-----------------------------------------------------------------')

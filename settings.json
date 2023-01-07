@@ -8,12 +8,12 @@
     
     "pathToDriver": "C:\\webdriver\\chromedriver",
     "fileName": "kratzen.xlsx", 
-    "outputPath": "C:\\Users\\hk151\\docs",
+    "outputPath": "C:\\Users\\hp",
 
 
     "chrome": {
         "hide": true,
-        "data-dir": "C:\\Users\\hk151\\AppData\\Local\\Google\\Chrome\\User Data",
+        "data-dir": "C:/Users/hp/AppData/Local/Google/Chrome/User Data",
         "profile": "Default"
     },
 
@@ -29,7 +29,7 @@
         "page": 7,
         "days": 120,
         "arbeitszeit": "vz;tz;snw;ho;mj",
-        "LookForCaptcha": true
+        "LookForCaptcha": false
     }, 
 
     "hoga": {
