@@ -4,7 +4,7 @@
     "depth": 10,
     
     "keywords": ["Restaurantfachmann"],
-    "states" : [ "Bayern"],
+    "states" : ["Baden-Württemberg","Niedersachsen","Rheinland-Pfalz","Nordrhein-Westfalen","Hessen", "Bayern"],
     
     "pathToDriver": "C:\\webdriver\\chromedriver",
     "fileName": "kratzen.xlsx", 
@@ -50,13 +50,13 @@
     },
 
     "searchArbeitsa": true,
-    "searchCareer": false,
-    "searchHoga": false,
-    "searchAzubiyo": false,
+    "searchCareer": true,
+    "searchHoga": true,
+    "searchAzubiyo": true,
     "searchStellen": false,
 
     "searchEveryMinute": false,
-    "searchEveryHour": true,
+    "searchEveryHour": false,
     "searchEveryDay": false,
     "searchEveryWeek": false
 
